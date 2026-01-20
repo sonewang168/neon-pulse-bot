@@ -72,21 +72,6 @@
 5. 建立金鑰 (JSON 格式) 並下載
 6. 將服務帳戶 Email 加入 Google Sheet 共用 (編輯者)
 
-Neon Pulse Bot 設定完成！
-已建立以下工作表：
-
-• settings - 設定
-• water_log - 喝水紀錄
-• stand_log - 起身紀錄
-• exercise_log - 運動紀錄
-
-📋 你的 Spreadsheet ID:
-17UKgUxXmTqzBdgZVkfHu4EV7zl_aJQdeXu_wMKu36ug
-
-Spreadsheet ID: 17UKgUxXmTqzBdgZVkfHu4EV7zl_aJQdeXu_wMKu36ug
-
-Spreadsheet URL: https://docs.google.com/spreadsheets/d/17UKgUxXmTqzBdgZVkfHu4EV7zl_aJQdeXu_wMKu36ug/edit
-
 ### 3️⃣ 建立 LINE Bot
 
 1. 前往 [LINE Developers](https://developers.line.biz/)
