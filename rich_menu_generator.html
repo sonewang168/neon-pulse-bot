@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賽博龐克 Rich Menu 生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        h1 {
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            margin-bottom: 30px;
+            font-size: 2em;
+            letter-spacing: 4px;
+        }
+        
+        #preview {
+            border: 3px solid #0ff;
+            box-shadow: 0 0 20px #0ff, inset 0 0 20px rgba(0, 255, 255, 0.1);
+            margin-bottom: 30px;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .btn-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #ff0080, #7928ca);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .download-btn.secondary {
+            background: linear-gradient(135deg, #00c3ff, #0080ff);
+        }
+        
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .download-btn:hover::before {
+            left: 100%;
+        }
+        
+        .download-btn:hover {
+            box-shadow: 0 0 30px #ff0080, 0 0 60px #7928ca;
+            transform: scale(1.05);
+        }
+        
+        .info {
+            color: #888;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .info span {
+            color: #0ff;
+        }
+        
+        .file-size {
+            color: #39ff14;
+            font-size: 1.2em;
+            margin-top: 15px;
+        }
+        
+        #fullCanvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ RICH MENU 生成器 ⚡</h1>
+    
+    <canvas id="preview" width="625" height="422"></canvas>
+    <canvas id="fullCanvas" width="2500" height="1686"></canvas>
+    
+    <div class="btn-container">
+        <button class="download-btn" onclick="downloadPNG()">📥 下載 PNG</button>
+        <button class="download-btn secondary" onclick="downloadJPG()">📥 下載 JPG (小檔)</button>
+    </div>
+    
+    <p class="info">尺寸：<span>2500 x 1686</span> 像素（LINE 標準）</p>
+    <p class="info">圖示與文字：<span>放大 2 倍</span></p>
+    <p class="file-size" id="fileSize"></p>
+
+    <script>
+        const WIDTH = 2500;
+        const HEIGHT = 1686;
+        const COLS = 3;
+        const ROWS = 2;
+        const CELL_W = WIDTH / COLS;
+        const CELL_H = HEIGHT / ROWS;
+
+        // 圖文放大倍數
+        const SCALE_CONTENT = 2;
+
+        const ITEMS = [
+            { icon: 'water', text: '已喝水', color1: '#00f5ff', color2: '#0080ff' },
+            { icon: 'stand', text: '已起身', color1: '#39ff14', color2: '#00ff88' },
+            { icon: 'run', text: '記錄運動', color1: '#ff6b00', color2: '#ffaa00' },
+            { icon: 'chart', text: '今日統計', color1: '#ff0080', color2: '#ff00ff' },
+            { icon: 'trend', text: '儀表板', color1: '#00ffff', color2: '#00ff88' },
+            { icon: 'gear', text: '設定', color1: '#8888ff', color2: '#aa88ff' }
+        ];
+
+        function drawCyberpunkMenu(ctx, canvasScale = 1) {
+            const w = WIDTH * canvasScale;
+            const h = HEIGHT * canvasScale;
+            const cellW = CELL_W * canvasScale;
+            const cellH = CELL_H * canvasScale;
+            const s = canvasScale; // 簡化
+            
+            // 深色背景
+            ctx.fillStyle = '#0a0a12';
+            ctx.fillRect(0, 0, w, h);
+            
+            // 背景網格
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.06)';
+            ctx.lineWidth = 1 * s;
+            const gridSize = 40 * s;
+            for (let x = 0; x < w; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+            
+            // 繪製每個格子
+            ITEMS.forEach((item, idx) => {
+                const col = idx % COLS;
+                const row = Math.floor(idx / COLS);
+                const x = col * cellW;
+                const y = row * cellH;
+                const cx = x + cellW / 2;
+                const cy = y + cellH / 2;
+                
+                // 格子背景漸層
+                const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cellW * 0.7);
+                grad.addColorStop(0, 'rgba(20, 20, 40, 0.9)');
+                grad.addColorStop(1, 'rgba(5, 5, 15, 0.95)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x + 4 * s, y + 4 * s, cellW - 8 * s, cellH - 8 * s);
+                
+                // 霓虹邊框
+                ctx.strokeStyle = item.color1;
+                ctx.lineWidth = 3 * s;
+                ctx.shadowColor = item.color1;
+                ctx.shadowBlur = 20 * s;
+                ctx.strokeRect(x + 12 * s, y + 12 * s, cellW - 24 * s, cellH - 24 * s);
+                
+                // 角落裝飾
+                const cornerSize = 25 * s;
+                ctx.lineWidth = 4 * s;
+                // 左上
+                ctx.beginPath();
+                ctx.moveTo(x + 12 * s, y + 12 * s + cornerSize);
+                ctx.lineTo(x + 12 * s, y + 12 * s);
+                ctx.lineTo(x + 12 * s + cornerSize, y + 12 * s);
+                ctx.stroke();
+                // 右上
+                ctx.beginPath();
+                ctx.moveTo(x + cellW - 12 * s - cornerSize, y + 12 * s);
+                ctx.lineTo(x + cellW - 12 * s, y + 12 * s);
+                ctx.lineTo(x + cellW - 12 * s, y + 12 * s + cornerSize);
+                ctx.stroke();
+                // 左下
+                ctx.beginPath();
+                ctx.moveTo(x + 12 * s, y + cellH - 12 * s - cornerSize);
+                ctx.lineTo(x + 12 * s, y + cellH - 12 * s);
+                ctx.lineTo(x + 12 * s + cornerSize, y + cellH - 12 * s);
+                ctx.stroke();
+                // 右下
+                ctx.beginPath();
+                ctx.moveTo(x + cellW - 12 * s - cornerSize, y + cellH - 12 * s);
+                ctx.lineTo(x + cellW - 12 * s, y + cellH - 12 * s);
+                ctx.lineTo(x + cellW - 12 * s, y + cellH - 12 * s - cornerSize);
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+                
+                // 繪製圖示 - 放大 2 倍
+                const iconSize = 140 * s * SCALE_CONTENT;
+                const iconY = cy - 50 * s;
+                drawIcon(ctx, item.icon, cx, iconY, iconSize, item.color1, item.color2, s);
+                
+                // 繪製文字 - 放大 2 倍
+                ctx.shadowColor = item.color1;
+                ctx.shadowBlur = 25 * s;
+                ctx.fillStyle = item.color1;
+                const fontSize = 52 * s * SCALE_CONTENT;
+                ctx.font = `bold ${fontSize}px "Microsoft JhengHei", "Noto Sans TC", "PingFang TC", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.text, cx, cy + 200 * s);
+                ctx.shadowBlur = 0;
+            });
+            
+            // 分隔線 - 霓虹風格
+            ctx.shadowColor = '#0ff';
+            ctx.shadowBlur = 15 * s;
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 2 * s;
+            
+            // 垂直線
+            for (let i = 1; i < COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellW, 0);
+                ctx.lineTo(i * cellW, h);
+                ctx.stroke();
+            }
+            // 水平線
+            ctx.beginPath();
+            ctx.moveTo(0, cellH);
+            ctx.lineTo(w, cellH);
+            ctx.stroke();
+            
+            ctx.shadowBlur = 0;
+            
+            // 掃描線效果
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.025)';
+            for (let y = 0; y < h; y += 3 * s) {
+                ctx.fillRect(0, y, w, 1.5 * s);
+            }
+        }
+
+        function drawIcon(ctx, type, cx, cy, size, color1, color2, s) {
+            ctx.save();
+            ctx.shadowColor = color1;
+            ctx.shadowBlur = 30 * s;
+            
+            const grad = ctx.createLinearGradient(cx - size/2, cy - size/2, cx + size/2, cy + size/2);
+            grad.addColorStop(0, color1);
+            grad.addColorStop(1, color2);
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = color1;
+            ctx.lineWidth = 5 * s;
+            
+            switch(type) {
+                case 'water':
+                    drawWaterDrop(ctx, cx, cy, size, s);
+                    break;
+                case 'stand':
+                    drawPerson(ctx, cx, cy, size, s);
+                    break;
+                case 'run':
+                    drawRunner(ctx, cx, cy, size, s);
+                    break;
+                case 'chart':
+                    drawBarChart(ctx, cx, cy, size, s);
+                    break;
+                case 'trend':
+                    drawTrendChart(ctx, cx, cy, size, s);
+                    break;
+                case 'gear':
+                    drawGear(ctx, cx, cy, size, s);
+                    break;
+            }
+            
+            ctx.restore();
+        }
+
+        function drawWaterDrop(ctx, cx, cy, size, s) {
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - size * 0.5);
+            ctx.bezierCurveTo(
+                cx + size * 0.5, cy - size * 0.1,
+                cx + size * 0.4, cy + size * 0.5,
+                cx, cy + size * 0.5
+            );
+            ctx.bezierCurveTo(
+                cx - size * 0.4, cy + size * 0.5,
+                cx - size * 0.5, cy - size * 0.1,
+                cx, cy - size * 0.5
+            );
+            ctx.fill();
+            ctx.stroke();
+            
+            // 高光
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(cx - size * 0.15, cy - size * 0.05, size * 0.08, size * 0.18, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawPerson(ctx, cx, cy, size, s) {
+            // 頭
+            ctx.beginPath();
+            ctx.arc(cx, cy - size * 0.32, size * 0.16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 身體
+            ctx.beginPath();
+            ctx.roundRect(cx - size * 0.14, cy - size * 0.12, size * 0.28, size * 0.38, size * 0.06);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 腿
+            ctx.beginPath();
+            ctx.roundRect(cx - size * 0.2, cy + size * 0.28, size * 0.14, size * 0.28, size * 0.04);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.roundRect(cx + size * 0.06, cy + size * 0.28, size * 0.14, size * 0.28, size * 0.04);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawRunner(ctx, cx, cy, size, s) {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // 頭
+            ctx.beginPath();
+            ctx.arc(cx - size * 0.08, cy - size * 0.32, size * 0.13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 身體 (傾斜)
+            ctx.save();
+            ctx.translate(cx, cy - size * 0.05);
+            ctx.rotate(0.35);
+            ctx.beginPath();
+            ctx.roundRect(-size * 0.11, -size * 0.18, size * 0.22, size * 0.36, size * 0.06);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            
+            // 腿
+            ctx.lineWidth = size * 0.1;
+            // 前腿
+            ctx.beginPath();
+            ctx.moveTo(cx + size * 0.08, cy + size * 0.12);
+            ctx.lineTo(cx + size * 0.32, cy + size * 0.42);
+            ctx.stroke();
+            // 後腿
+            ctx.beginPath();
+            ctx.moveTo(cx + size * 0.02, cy + size * 0.15);
+            ctx.lineTo(cx - size * 0.28, cy + size * 0.4);
+            ctx.stroke();
+            
+            // 手臂
+            ctx.lineWidth = size * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(cx + size * 0.02, cy - size * 0.02);
+            ctx.lineTo(cx + size * 0.28, cy + size * 0.18);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx - size * 0.08, cy - size * 0.05);
+            ctx.lineTo(cx - size * 0.28, cy - size * 0.25);
+            ctx.stroke();
+        }
+
+        function drawBarChart(ctx, cx, cy, size, s) {
+            const barW = size * 0.16;
+            const gap = size * 0.06;
+            const heights = [0.35, 0.65, 0.45, 0.85];
+            const startX = cx - (heights.length * barW + (heights.length - 1) * gap) / 2;
+            
+            heights.forEach((h, i) => {
+                const x = startX + i * (barW + gap);
+                const barH = size * h;
+                const y = cy + size * 0.4 - barH;
+                
+                ctx.beginPath();
+                ctx.roundRect(x, y, barW, barH, size * 0.025);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function drawTrendChart(ctx, cx, cy, size, s) {
+            // 座標軸
+            ctx.lineWidth = 5 * s;
+            ctx.beginPath();
+            ctx.moveTo(cx - size * 0.38, cy - size * 0.32);
+            ctx.lineTo(cx - size * 0.38, cy + size * 0.32);
+            ctx.lineTo(cx + size * 0.38, cy + size * 0.32);
+            ctx.stroke();
+            
+            // 趨勢線
+            ctx.lineWidth = 7 * s;
+            ctx.beginPath();
+            ctx.moveTo(cx - size * 0.28, cy + size * 0.18);
+            ctx.lineTo(cx - size * 0.05, cy - size * 0.05);
+            ctx.lineTo(cx + size * 0.1, cy + size * 0.08);
+            ctx.lineTo(cx + size * 0.28, cy - size * 0.22);
+            ctx.stroke();
+            
+            // 箭頭
+            const tipX = cx + size * 0.28;
+            const tipY = cy - size * 0.22;
+            ctx.beginPath();
+            ctx.moveTo(tipX + size * 0.06, tipY - size * 0.06);
+            ctx.lineTo(tipX - size * 0.08, tipY + size * 0.02);
+            ctx.lineTo(tipX - size * 0.02, tipY + size * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 數據點
+            const points = [
+                [cx - size * 0.28, cy + size * 0.18],
+                [cx - size * 0.05, cy - size * 0.05],
+                [cx + size * 0.1, cy + size * 0.08]
+            ];
+            points.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.045, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawGear(ctx, cx, cy, size, s) {
+            const teeth = 8;
+            const outerR = size * 0.45;
+            const toothDepth = size * 0.12;
+            
+            ctx.beginPath();
+            for (let i = 0; i < teeth * 2; i++) {
+                const angle = (i * Math.PI / teeth) - Math.PI / 2;
+                const r = i % 2 === 0 ? outerR : outerR - toothDepth;
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // 中心圓環
+            ctx.fillStyle = '#0a0a12';
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 內部小圓
+            ctx.lineWidth = 4 * s;
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.09, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // 初始化
+        function init() {
+            // 預覽版本
+            const previewCanvas = document.getElementById('preview');
+            const previewCtx = previewCanvas.getContext('2d');
+            drawCyberpunkMenu(previewCtx, 0.25);
+            
+            // 完整版本
+            const fullCanvas = document.getElementById('fullCanvas');
+            const fullCtx = fullCanvas.getContext('2d');
+            drawCyberpunkMenu(fullCtx, 1);
+            
+            // 顯示預估檔案大小
+            updateFileSize();
+        }
+
+        function updateFileSize() {
+            const canvas = document.getElementById('fullCanvas');
+            
+            // PNG 大小
+            const pngData = canvas.toDataURL('image/png');
+            const pngSize = Math.round((pngData.length * 3 / 4) / 1024);
+            
+            // JPG 大小 (quality 0.9)
+            const jpgData = canvas.toDataURL('image/jpeg', 0.92);
+            const jpgSize = Math.round((jpgData.length * 3 / 4) / 1024);
+            
+            document.getElementById('fileSize').innerHTML = 
+                `預估大小：PNG <span style="color:#ff0080">${pngSize} KB</span> ｜ JPG <span style="color:#00f5ff">${jpgSize} KB</span>`;
+        }
+
+        function downloadPNG() {
+            const canvas = document.getElementById('fullCanvas');
+            const link = document.createElement('a');
+            link.download = 'rich_menu_cyberpunk.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadJPG() {
+            const canvas = document.getElementById('fullCanvas');
+            const link = document.createElement('a');
+            link.download = 'rich_menu_cyberpunk.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            link.click();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
