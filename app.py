@@ -1627,21 +1627,75 @@ def handle_message(event):
             elif text == '今日飲食' or text == '飲食統計':
                 stats = get_meal_stats()
                 if stats['meals']:
-                    meal_text = '\n'.join([f"• {m['type']}：{m['foods']} ({m['calories']}卡)" for m in stats['meals']])
-                    msgs.append(TextMessage(text=f"🍎 今日飲食\n\n{meal_text}\n\n📊 總熱量：{stats['total_calories']} 大卡", quick_reply=qr(QR_MAIN)))
+                    # 分類顯示
+                    by_type = {'早餐': [], '午餐': [], '晚餐': [], '點心': []}
+                    for m in stats['meals']:
+                        t = m['type'] if m['type'] in by_type else '點心'
+                        by_type[t].append(m)
+                    
+                    meal_text = ''
+                    for meal_type in ['早餐', '午餐', '晚餐', '點心']:
+                        items = by_type[meal_type]
+                        if items:
+                            foods = '、'.join([f"{m['foods']}({m['calories']}卡)" for m in items])
+                            cal_sum = sum(m['calories'] for m in items)
+                            meal_text += f"🍽️ {meal_type}：{foods}\n"
+                    
+                    msgs.append(TextMessage(text=f"🍎 今日飲食\n\n{meal_text.strip()}\n\n📊 總熱量：{stats['total_calories']} 大卡", quick_reply=qr(QR_MAIN)))
                 else:
                     msgs.append(TextMessage(text="今天還沒有飲食記錄\n\n輸入「記錄飲食」開始記錄", quick_reply=qr(QR_MAIN)))
             
             # 心情記錄
             elif text == '記錄心情' or text == '心情':
-                msgs.append(TextMessage(text="😊 記錄心情\n\n直接輸入表情符號：\n😄 開心\n🙂 普通\n😐 平靜\n😔 低落\n😢 難過\n😡 生氣\n😰 焦慮\n😴 疲憊\n\n可加備註：😄 今天很棒", quick_reply=qr(QR_MAIN)))
+                msgs.append(TextMessage(text="😊 記錄心情\n\n輸入表情或文字：\n😄 或「開心」\n🙂 或「普通」\n😐 或「平靜」\n😔 或「低落」\n😢 或「難過」\n😡 或「生氣」\n😰 或「焦慮」\n😴 或「疲憊」\n\n可加備註：開心 今天很棒", quick_reply=qr(QR_MAIN)))
             
-            elif text[0] in MOOD_OPTIONS:
+            elif len(text) > 0 and text[0] in MOOD_OPTIONS:
                 emoji = text[0]
                 note = text[1:].strip()
                 write_mood(emoji, note)
                 score = MOOD_OPTIONS[emoji]
                 msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n{emoji} 分數：{score}/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            # 心情文字輸入
+            elif text.startswith('開心') or text.startswith('很開心'):
+                note = text.replace('開心', '').replace('很', '').strip()
+                write_mood('😄', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😄 分數：5/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('普通'):
+                note = text.replace('普通', '').strip()
+                write_mood('🙂', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n🙂 分數：4/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('平靜'):
+                note = text.replace('平靜', '').strip()
+                write_mood('😐', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😐 分數：3/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('低落') or text.startswith('不開心'):
+                note = text.replace('低落', '').replace('不開心', '').strip()
+                write_mood('😔', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😔 分數：2/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('難過') or text.startswith('傷心'):
+                note = text.replace('難過', '').replace('傷心', '').strip()
+                write_mood('😢', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😢 分數：1/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('生氣') or text.startswith('憤怒'):
+                note = text.replace('生氣', '').replace('憤怒', '').strip()
+                write_mood('😡', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😡 分數：1/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('焦慮') or text.startswith('緊張'):
+                note = text.replace('焦慮', '').replace('緊張', '').strip()
+                write_mood('😰', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😰 分數：2/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('疲憊') or text.startswith('累') or text.startswith('好累'):
+                note = text.replace('疲憊', '').replace('累', '').replace('好', '').strip()
+                write_mood('😴', note)
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n😴 分數：2/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
             
             elif text == '心情統計':
                 stats = get_mood_stats()
