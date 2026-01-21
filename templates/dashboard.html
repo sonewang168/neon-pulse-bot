@@ -404,7 +404,7 @@
                     <div class="progress">
                         <div class="progress-bar" id="waterProgress" style="width: 0%"></div>
                     </div>
-                    <div class="goal">目標 8 杯</div>
+                    <div class="goal" id="waterGoal">目標 8 杯</div>
                 </div>
                 
                 <div class="stat-card stand">
@@ -414,7 +414,7 @@
                     <div class="progress">
                         <div class="progress-bar" id="standProgress" style="width: 0%"></div>
                     </div>
-                    <div class="goal">目標 6 次</div>
+                    <div class="goal" id="standGoal">目標 6 次</div>
                 </div>
                 
                 <div class="stat-card exercise">
@@ -424,7 +424,7 @@
                     <div class="progress">
                         <div class="progress-bar" id="exerciseProgress" style="width: 0%"></div>
                     </div>
-                    <div class="goal">目標 30 分鐘</div>
+                    <div class="goal" id="exerciseGoal">目標 30 分鐘</div>
                 </div>
                 
                 <div class="stat-card calories">
@@ -507,20 +507,25 @@
         // API Base URL
         const API = '';
         
+        // Goals (default values, will be updated from API)
+        let goals = { water: 8, stand: 6, exercise: 30 };
+        
         // Load data
         async function loadData() {
             try {
-                const [todayRes, weekRes, weightRes, streakRes] = await Promise.all([
+                const [todayRes, weekRes, weightRes, streakRes, goalsRes] = await Promise.all([
                     fetch(`${API}/api/today`),
                     fetch(`${API}/api/week`),
                     fetch(`${API}/api/weight`),
-                    fetch(`${API}/api/streak`)
+                    fetch(`${API}/api/streak`),
+                    fetch(`${API}/api/goals`)
                 ]);
                 
                 const today = await todayRes.json();
                 const week = await weekRes.json();
                 const weight = await weightRes.json();
                 const streak = await streakRes.json();
+                goals = await goalsRes.json();
                 
                 updateUI(today, week, weight, streak);
                 
@@ -548,10 +553,15 @@
             document.getElementById('exerciseMinutes').textContent = today.exercise_minutes || 0;
             document.getElementById('caloriesBurned').textContent = today.exercise_calories || 0;
             
+            // Update goal labels
+            document.getElementById('waterGoal').textContent = `目標 ${goals.water} 杯`;
+            document.getElementById('standGoal').textContent = `目標 ${goals.stand} 次`;
+            document.getElementById('exerciseGoal').textContent = `目標 ${goals.exercise} 分鐘`;
+            
             // Progress bars
-            document.getElementById('waterProgress').style.width = Math.min((today.water_count || 0) / 8 * 100, 100) + '%';
-            document.getElementById('standProgress').style.width = Math.min((today.stand_count || 0) / 6 * 100, 100) + '%';
-            document.getElementById('exerciseProgress').style.width = Math.min((today.exercise_minutes || 0) / 30 * 100, 100) + '%';
+            document.getElementById('waterProgress').style.width = Math.min((today.water_count || 0) / goals.water * 100, 100) + '%';
+            document.getElementById('standProgress').style.width = Math.min((today.stand_count || 0) / goals.stand * 100, 100) + '%';
+            document.getElementById('exerciseProgress').style.width = Math.min((today.exercise_minutes || 0) / goals.exercise * 100, 100) + '%';
             
             // Week chart
             renderWeekChart(week);
@@ -598,9 +608,9 @@
                                (today === 5 && day.weekday === '五') ||
                                (today === 6 && day.weekday === '六');
                 
-                const waterH = Math.min((day.water || 0) / 8 * 60, 60);
-                const standH = Math.min((day.stand || 0) / 6 * 60, 60);
-                const exerciseH = Math.min((day.exercise || 0) / 30 * 60, 60);
+                const waterH = Math.min((day.water || 0) / goals.water * 60, 60);
+                const standH = Math.min((day.stand || 0) / goals.stand * 60, 60);
+                const exerciseH = Math.min((day.exercise || 0) / goals.exercise * 60, 60);
                 
                 html += `
                     <div class="day-bar ${day.date === new Date().toISOString().slice(0,10) ? 'today' : ''}">

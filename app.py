@@ -1,6 +1,6 @@
 """
-⚡ Neon Pulse Bot v8
-新增：週報統計、連續達標、體重記錄
+⚡ Neon Pulse Bot v9
+新增：自訂每日目標（喝水杯數、起身次數、運動分鐘）
 """
 
 import os
@@ -56,8 +56,20 @@ COLORS = {
 
 EXERCISE_TYPES = {'跑步': 10, '走路': 4, '游泳': 12, '騎車': 8, '重訓': 6, '瑜伽': 4, '跳繩': 12, '籃球': 8, '羽球': 7, '桌球': 5, '其他': 5}
 
-# 達標標準
-GOALS = {'water': 8, 'stand': 6, 'exercise': 30}
+# 預設達標標準
+DEFAULT_GOALS = {'water': 8, 'stand': 6, 'exercise': 30}
+
+def get_goals():
+    """讀取用戶自訂目標，若無則用預設值"""
+    try:
+        settings = read_settings()
+        return {
+            'water': int(settings.get('water_goal', DEFAULT_GOALS['water'])) or DEFAULT_GOALS['water'],
+            'stand': int(settings.get('stand_goal', DEFAULT_GOALS['stand'])) or DEFAULT_GOALS['stand'],
+            'exercise': int(settings.get('exercise_goal', DEFAULT_GOALS['exercise'])) or DEFAULT_GOALS['exercise']
+        }
+    except:
+        return DEFAULT_GOALS
 
 def get_gspread_client():
     global _gspread_client, _client_time
@@ -157,15 +169,17 @@ def read_week_summary():
     week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
     week_end = (today - timedelta(days=today.weekday()) + timedelta(days=6)).strftime('%Y-%m-%d')
     
+    goals = get_goals()
+    
     total_water = sum(d['water'] for d in week_stats)
     total_stand = sum(d['stand'] for d in week_stats)
     total_exercise = sum(d['exercise'] for d in week_stats)
     
     # 計算達標天數
-    days_water_ok = sum(1 for d in week_stats if d['water'] >= GOALS['water'])
-    days_stand_ok = sum(1 for d in week_stats if d['stand'] >= GOALS['stand'])
-    days_exercise_ok = sum(1 for d in week_stats if d['exercise'] >= GOALS['exercise'])
-    days_all_ok = sum(1 for d in week_stats if d['water'] >= GOALS['water'] and d['stand'] >= GOALS['stand'] and d['exercise'] >= GOALS['exercise'])
+    days_water_ok = sum(1 for d in week_stats if d['water'] >= goals['water'])
+    days_stand_ok = sum(1 for d in week_stats if d['stand'] >= goals['stand'])
+    days_exercise_ok = sum(1 for d in week_stats if d['exercise'] >= goals['exercise'])
+    days_all_ok = sum(1 for d in week_stats if d['water'] >= goals['water'] and d['stand'] >= goals['stand'] and d['exercise'] >= goals['exercise'])
     
     # 計算總熱量
     client = get_gspread_client()
@@ -196,6 +210,8 @@ def calculate_streak():
     client = get_gspread_client()
     ss = client.open_by_key(SPREADSHEET_ID)
     
+    goals = get_goals()
+    
     # 只讀取最近 35 天的資料
     cutoff = (today - timedelta(days=35)).strftime('%Y-%m-%d')
     
@@ -220,7 +236,7 @@ def calculate_streak():
         exercise = sum(int(r[2]) for r in exercise_data if r[0].startswith(d) and len(r) > 2 and r[2].isdigit())
         
         # 檢查是否達標
-        if water >= GOALS['water'] and stand >= GOALS['stand'] and exercise >= GOALS['exercise']:
+        if water >= goals['water'] and stand >= goals['stand'] and exercise >= goals['exercise']:
             streak += 1
             check_date -= timedelta(days=1)
         else:
@@ -234,7 +250,23 @@ def calculate_streak():
 
 def read_settings():
     data = get_sheet('settings').get_all_records()
-    return data[0] if data else {'water_interval': 60, 'stand_interval': 45, 'dnd_start': '22:00', 'dnd_end': '08:00', 'enabled': True}
+    if data:
+        settings = data[0]
+        # 確保有預設值
+        settings.setdefault('water_interval', 60)
+        settings.setdefault('stand_interval', 45)
+        settings.setdefault('dnd_start', '22:00')
+        settings.setdefault('dnd_end', '08:00')
+        settings.setdefault('enabled', True)
+        settings.setdefault('water_goal', 8)
+        settings.setdefault('stand_goal', 6)
+        settings.setdefault('exercise_goal', 30)
+        return settings
+    return {
+        'water_interval': 60, 'stand_interval': 45, 
+        'dnd_start': '22:00', 'dnd_end': '08:00', 'enabled': True,
+        'water_goal': 8, 'stand_goal': 6, 'exercise_goal': 30
+    }
 
 # ===== 體重相關 =====
 def write_weight(weight):
@@ -614,16 +646,20 @@ def flex_modify_exercise(stats):
             {"type": "separator", "margin": "lg", "color": "#333355"},
             {"type": "text", "text": "選擇：刪除最後 / 清空全部", "color": COLORS['gray'], "size": "xs", "margin": "md"}]}}
 
-def flex_stats(s, streak=0):
+def flex_stats(s, streak=0, goals=None):
+    if goals is None:
+        goals = get_goals()
+    
     water_count = s.get('water_count', 0) or 0
     stand_count = s.get('stand_count', 0) or 0
     exercise_minutes = s.get('exercise_minutes', 0) or 0
     exercise_calories = s.get('exercise_calories', 0) or 0
     date_str = s.get('date', '今日') or '今日'
     
-    wp = min(water_count/8*100, 100)
-    sp = min(stand_count/6*100, 100)
-    ep = min(exercise_minutes/30*100, 100)
+    wg, sg, eg = goals['water'], goals['stand'], goals['exercise']
+    wp = min(water_count/wg*100, 100) if wg > 0 else 0
+    sp = min(stand_count/sg*100, 100) if sg > 0 else 0
+    ep = min(exercise_minutes/eg*100, 100) if eg > 0 else 0
     streak_text = f"🔥 連續 {streak} 天" if streak and streak > 0 else "點擊「連續達標」查看"
     return {"type": "bubble", "size": "mega", "styles": {"body": {"backgroundColor": COLORS['bg']}},
         "body": {"type": "box", "layout": "vertical", "contents": [
@@ -634,21 +670,21 @@ def flex_stats(s, streak=0):
             {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
                 {"type": "box", "layout": "horizontal", "contents": [
                     {"type": "text", "text": "💧 喝水", "color": COLORS['cyan']},
-                    {"type": "text", "text": f"{water_count} / 8 杯", "color": COLORS['white'], "align": "end"}]},
+                    {"type": "text", "text": f"{water_count} / {wg} 杯", "color": COLORS['white'], "align": "end"}]},
                 {"type": "box", "layout": "horizontal", "margin": "sm", "backgroundColor": COLORS['bg_light'], "cornerRadius": "3px", "contents": [
                     {"type": "box", "layout": "vertical", "contents": [], "width": f"{wp}%", "backgroundColor": COLORS['cyan'], "height": "6px", "cornerRadius": "3px"},
                     {"type": "box", "layout": "vertical", "contents": [], "height": "6px"}]}]},
             {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
                 {"type": "box", "layout": "horizontal", "contents": [
                     {"type": "text", "text": "🧍 起身", "color": COLORS['green']},
-                    {"type": "text", "text": f"{stand_count} / 6 次", "color": COLORS['white'], "align": "end"}]},
+                    {"type": "text", "text": f"{stand_count} / {sg} 次", "color": COLORS['white'], "align": "end"}]},
                 {"type": "box", "layout": "horizontal", "margin": "sm", "backgroundColor": COLORS['bg_light'], "cornerRadius": "3px", "contents": [
                     {"type": "box", "layout": "vertical", "contents": [], "width": f"{sp}%", "backgroundColor": COLORS['green'], "height": "6px", "cornerRadius": "3px"},
                     {"type": "box", "layout": "vertical", "contents": [], "height": "6px"}]}]},
             {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
                 {"type": "box", "layout": "horizontal", "contents": [
                     {"type": "text", "text": "🏃 運動", "color": COLORS['orange']},
-                    {"type": "text", "text": f"{exercise_minutes} / 30 分鐘", "color": COLORS['white'], "align": "end"}]},
+                    {"type": "text", "text": f"{exercise_minutes} / {eg} 分鐘", "color": COLORS['white'], "align": "end"}]},
                 {"type": "box", "layout": "horizontal", "margin": "sm", "backgroundColor": COLORS['bg_light'], "cornerRadius": "3px", "contents": [
                     {"type": "box", "layout": "vertical", "contents": [], "width": f"{ep}%", "backgroundColor": COLORS['orange'], "height": "6px", "cornerRadius": "3px"},
                     {"type": "box", "layout": "vertical", "contents": [], "height": "6px"}]}]},
@@ -657,8 +693,11 @@ def flex_stats(s, streak=0):
                 {"type": "text", "text": "🔥 消耗熱量", "color": COLORS['gray']},
                 {"type": "text", "text": f"{exercise_calories} kcal", "color": COLORS['pink'], "size": "lg", "weight": "bold", "align": "end"}]}]}}
 
-def flex_week_report(summary):
+def flex_week_report(summary, goals=None):
     """週報 Flex"""
+    if goals is None:
+        goals = get_goals()
+    
     daily = summary.get('daily_stats', [])
     
     # 建立每日進度條
@@ -669,9 +708,9 @@ def flex_week_report(summary):
         stand = d.get('stand', 0) or 0
         exercise = d.get('exercise', 0) or 0
         
-        wo = "✅" if water >= GOALS['water'] else "⚠️"
-        so = "✅" if stand >= GOALS['stand'] else "⚠️"
-        eo = "✅" if exercise >= GOALS['exercise'] else "⚠️"
+        wo = "✅" if water >= goals['water'] else "⚠️"
+        so = "✅" if stand >= goals['stand'] else "⚠️"
+        eo = "✅" if exercise >= goals['exercise'] else "⚠️"
         day_rows.append({
             "type": "box", "layout": "horizontal", "contents": [
                 {"type": "text", "text": str(weekday), "size": "sm", "color": COLORS['gray'], "flex": 1},
@@ -866,11 +905,21 @@ def flex_daily_report(s):
 
 def flex_settings(s):
     st = "🟢 開啟" if s.get('enabled') in ['TRUE', True] else "🔴 關閉"
+    wg = s.get('water_goal', 8) or 8
+    sg = s.get('stand_goal', 6) or 6
+    eg = s.get('exercise_goal', 30) or 30
     return {"type": "bubble", "size": "mega", "styles": {"body": {"backgroundColor": COLORS['bg']}},
         "body": {"type": "box", "layout": "vertical", "contents": [
             {"type": "text", "text": "⚙️ 目前設定", "weight": "bold", "size": "xl", "color": COLORS['purple']},
             {"type": "separator", "margin": "md", "color": "#333355"},
-            {"type": "box", "layout": "vertical", "margin": "lg", "spacing": "md", "contents": [
+            {"type": "text", "text": "📊 每日目標", "color": COLORS['gold'], "margin": "lg", "size": "sm"},
+            {"type": "box", "layout": "vertical", "margin": "sm", "spacing": "sm", "contents": [
+                {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "💧 喝水目標", "color": COLORS['cyan'], "flex": 2}, {"type": "text", "text": f"{wg} 杯", "color": COLORS['white'], "align": "end", "flex": 1}]},
+                {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🧍 起身目標", "color": COLORS['green'], "flex": 2}, {"type": "text", "text": f"{sg} 次", "color": COLORS['white'], "align": "end", "flex": 1}]},
+                {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🏃 運動目標", "color": COLORS['orange'], "flex": 2}, {"type": "text", "text": f"{eg} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]}]},
+            {"type": "separator", "margin": "lg", "color": "#333355"},
+            {"type": "text", "text": "⏰ 提醒設定", "color": COLORS['gold'], "margin": "lg", "size": "sm"},
+            {"type": "box", "layout": "vertical", "margin": "sm", "spacing": "sm", "contents": [
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "提醒狀態", "color": COLORS['gray'], "flex": 2}, {"type": "text", "text": st, "color": COLORS['white'], "align": "end", "flex": 1}]},
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "💧 喝水間隔", "color": COLORS['cyan'], "flex": 2}, {"type": "text", "text": f"{s.get('water_interval', 60)} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]},
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🧍 久坐間隔", "color": COLORS['green'], "flex": 2}, {"type": "text", "text": f"{s.get('stand_interval', 45)} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]},
@@ -1073,6 +1122,50 @@ def handle_message(event):
                 write_setting('enabled', 'FALSE')
                 msgs.append(TextMessage(text="✅ 提醒已關閉", quick_reply=qr(QR_MAIN)))
             
+            # ===== 目標設定 =====
+            elif text.startswith('喝水目標'):
+                p = text.split()
+                if len(p) >= 2 and p[-1].isdigit():
+                    val = int(p[-1])
+                    if 1 <= val <= 20:
+                        write_setting('water_goal', val)
+                        msgs.append(TextMessage(text=f"✅ 喝水目標設為 {val} 杯/天", quick_reply=qr(QR_MAIN)))
+                    else:
+                        msgs.append(TextMessage(text="⚠️ 請輸入 1-20 之間的數字", quick_reply=qr(QR_MAIN)))
+                else:
+                    goals = get_goals()
+                    msgs.append(TextMessage(text=f"目前喝水目標：{goals['water']} 杯\n\n格式：喝水目標 數字\n例如：喝水目標 10", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('起身目標'):
+                p = text.split()
+                if len(p) >= 2 and p[-1].isdigit():
+                    val = int(p[-1])
+                    if 1 <= val <= 20:
+                        write_setting('stand_goal', val)
+                        msgs.append(TextMessage(text=f"✅ 起身目標設為 {val} 次/天", quick_reply=qr(QR_MAIN)))
+                    else:
+                        msgs.append(TextMessage(text="⚠️ 請輸入 1-20 之間的數字", quick_reply=qr(QR_MAIN)))
+                else:
+                    goals = get_goals()
+                    msgs.append(TextMessage(text=f"目前起身目標：{goals['stand']} 次\n\n格式：起身目標 數字\n例如：起身目標 8", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('運動目標'):
+                p = text.split()
+                if len(p) >= 2 and p[-1].isdigit():
+                    val = int(p[-1])
+                    if 1 <= val <= 180:
+                        write_setting('exercise_goal', val)
+                        msgs.append(TextMessage(text=f"✅ 運動目標設為 {val} 分鐘/天", quick_reply=qr(QR_MAIN)))
+                    else:
+                        msgs.append(TextMessage(text="⚠️ 請輸入 1-180 之間的數字", quick_reply=qr(QR_MAIN)))
+                else:
+                    goals = get_goals()
+                    msgs.append(TextMessage(text=f"目前運動目標：{goals['exercise']} 分鐘\n\n格式：運動目標 數字\n例如：運動目標 45", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '目標設定' or text == '設定目標':
+                goals = get_goals()
+                msgs.append(TextMessage(text=f"📊 目前每日目標\n\n💧 喝水：{goals['water']} 杯\n🧍 起身：{goals['stand']} 次\n🏃 運動：{goals['exercise']} 分鐘\n\n修改方式：\n• 喝水目標 10\n• 起身目標 8\n• 運動目標 45", quick_reply=qr(QR_MAIN)))
+            
             else:
                 msgs.append(TextMessage(text="🤖 請使用下方按鈕", quick_reply=qr(QR_MAIN)))
             
@@ -1148,6 +1241,10 @@ def api_week():
 @app.route('/api/settings')
 def api_settings():
     return jsonify(read_settings())
+
+@app.route('/api/goals')
+def api_goals():
+    return jsonify(get_goals())
 
 @app.route('/api/streak')
 def api_streak():
