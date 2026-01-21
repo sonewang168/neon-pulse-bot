@@ -1305,6 +1305,142 @@ def api_streak():
 def api_weight():
     return jsonify(get_weight_stats())
 
+# ===== PWA 記錄 API =====
+@app.route('/api/log/water', methods=['POST'])
+def api_log_water():
+    """PWA 記錄喝水"""
+    try:
+        count = write_water()
+        return jsonify({'success': True, 'count': count, 'message': f'已記錄！今日第 {count} 杯'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/log/stand', methods=['POST'])
+def api_log_stand():
+    """PWA 記錄起身"""
+    try:
+        count = write_stand()
+        return jsonify({'success': True, 'count': count, 'message': f'已記錄！今日第 {count} 次'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/log/exercise', methods=['POST'])
+def api_log_exercise():
+    """PWA 記錄運動"""
+    try:
+        data = request.get_json() or {}
+        ex_type = data.get('type', '其他')
+        duration = int(data.get('duration', 30))
+        cal = write_exercise(ex_type, duration)
+        return jsonify({'success': True, 'type': ex_type, 'duration': duration, 'calories': cal, 'message': f'{ex_type} {duration}分鐘，消耗 {cal} 大卡'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/log/weight', methods=['POST'])
+def api_log_weight():
+    """PWA 記錄體重"""
+    try:
+        data = request.get_json() or {}
+        weight = float(data.get('weight', 0))
+        if weight <= 0:
+            return jsonify({'success': False, 'error': '請輸入有效體重'}), 400
+        
+        sheet = get_sheet('weight_log')
+        sheet.append_row([get_now(), weight])
+        return jsonify({'success': True, 'weight': weight, 'message': f'已記錄體重 {weight} kg'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/update/goals', methods=['POST'])
+def api_update_goals():
+    """PWA 更新目標"""
+    try:
+        data = request.get_json() or {}
+        updated = []
+        
+        if 'water' in data:
+            val = int(data['water'])
+            if 1 <= val <= 20:
+                write_setting('water_goal', val)
+                updated.append(f'喝水 {val} 杯')
+        
+        if 'stand' in data:
+            val = int(data['stand'])
+            if 1 <= val <= 20:
+                write_setting('stand_goal', val)
+                updated.append(f'起身 {val} 次')
+        
+        if 'exercise' in data:
+            val = int(data['exercise'])
+            if 1 <= val <= 180:
+                write_setting('exercise_goal', val)
+                updated.append(f'運動 {val} 分鐘')
+        
+        return jsonify({'success': True, 'updated': updated, 'message': '目標已更新：' + '、'.join(updated)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/update/settings', methods=['POST'])
+def api_update_settings():
+    """PWA 更新設定"""
+    try:
+        data = request.get_json() or {}
+        updated = []
+        
+        if 'water_interval' in data:
+            val = int(data['water_interval'])
+            if 10 <= val <= 180:
+                write_setting('water_interval', val)
+                updated.append(f'喝水間隔 {val} 分鐘')
+        
+        if 'stand_interval' in data:
+            val = int(data['stand_interval'])
+            if 10 <= val <= 120:
+                write_setting('stand_interval', val)
+                updated.append(f'久坐間隔 {val} 分鐘')
+        
+        if 'enabled' in data:
+            val = 'TRUE' if data['enabled'] else 'FALSE'
+            write_setting('enabled', val)
+            updated.append('提醒 ' + ('開啟' if data['enabled'] else '關閉'))
+        
+        if 'dnd_start' in data and 'dnd_end' in data:
+            write_setting('dnd_start', data['dnd_start'])
+            write_setting('dnd_end', data['dnd_end'])
+            updated.append(f"勿擾 {data['dnd_start']}-{data['dnd_end']}")
+        
+        return jsonify({'success': True, 'updated': updated, 'message': '設定已更新'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/modify/water', methods=['POST'])
+def api_modify_water():
+    """PWA 修改喝水次數"""
+    try:
+        data = request.get_json() or {}
+        target = int(data.get('count', 0))
+        if target < 0:
+            return jsonify({'success': False, 'error': '次數不能為負'}), 400
+        
+        set_count('water', target)
+        return jsonify({'success': True, 'count': target, 'message': f'喝水已設為 {target} 杯'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/modify/stand', methods=['POST'])
+def api_modify_stand():
+    """PWA 修改起身次數"""
+    try:
+        data = request.get_json() or {}
+        target = int(data.get('count', 0))
+        if target < 0:
+            return jsonify({'success': False, 'error': '次數不能為負'}), 400
+        
+        set_count('stand', target)
+        return jsonify({'success': True, 'count': target, 'message': f'起身已設為 {target} 次'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
