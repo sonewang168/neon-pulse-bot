@@ -45,6 +45,37 @@ _gspread_client = None
 _client_time = 0
 CACHE_TTL = 300
 
+# ===== 資料快取（減少 API 呼叫）=====
+_data_cache = {}
+_cache_time = {}
+DATA_CACHE_TTL = 30  # 快取 30 秒
+
+def get_cached(key, fetch_func):
+    """取得快取資料，過期才重新讀取"""
+    now = time.time()
+    if key in _data_cache and (now - _cache_time.get(key, 0)) < DATA_CACHE_TTL:
+        return _data_cache[key]
+    try:
+        data = fetch_func()
+        _data_cache[key] = data
+        _cache_time[key] = now
+        return data
+    except Exception as e:
+        print(f"[Cache] Error fetching {key}: {e}")
+        # 錯誤時返回舊快取
+        if key in _data_cache:
+            return _data_cache[key]
+        raise
+
+def clear_cache(key=None):
+    """清除快取"""
+    if key:
+        _data_cache.pop(key, None)
+        _cache_time.pop(key, None)
+    else:
+        _data_cache.clear()
+        _cache_time.clear()
+
 COLORS = {
     'bg': '#0a0a12', 'bg_light': '#1a1a2e', 'cyan': '#00f5ff',
     'green': '#39ff14', 'orange': '#ff6b00', 'pink': '#ff0080',
@@ -372,6 +403,7 @@ def write_water():
     
     # 寫入新記錄
     sheet.append_row([get_now()])
+    clear_cache('today')  # 清除快取
     return count + 1
 
 def write_stand():
@@ -398,11 +430,13 @@ def write_stand():
     
     # 寫入新記錄
     sheet.append_row([get_now()])
+    clear_cache('today')  # 清除快取
     return count + 1
 
 def write_exercise(ex_type, duration):
     cal = duration * EXERCISE_TYPES.get(ex_type, 5)
     get_sheet('exercise_log').append_row([get_now(), ex_type, duration, cal])
+    clear_cache('today')  # 清除快取
     return cal
 
 def write_setting(key, value):
@@ -410,6 +444,7 @@ def write_setting(key, value):
     headers = sheet.row_values(1)
     if key in headers:
         sheet.update_cell(2, headers.index(key) + 1, value)
+        clear_cache()  # 清除所有快取
         return True
     return False
 
@@ -1283,27 +1318,45 @@ def api_weekly_report():
 
 @app.route('/api/today')
 def api_today():
-    return jsonify(read_today_stats())
+    try:
+        return jsonify(get_cached('today', read_today_stats))
+    except:
+        return jsonify({'water_count': 0, 'stand_count': 0, 'exercise_minutes': 0, 'exercise_calories': 0})
 
 @app.route('/api/week')
 def api_week():
-    return jsonify(read_week_stats())
+    try:
+        return jsonify(get_cached('week', read_week_stats))
+    except:
+        return jsonify([])
 
 @app.route('/api/settings')
 def api_settings():
-    return jsonify(read_settings())
+    try:
+        return jsonify(get_cached('settings', read_settings))
+    except:
+        return jsonify({'water_interval': 60, 'stand_interval': 45, 'enabled': True, 'water_goal': 8, 'stand_goal': 6, 'exercise_goal': 30})
 
 @app.route('/api/goals')
 def api_goals():
-    return jsonify(get_goals())
+    try:
+        return jsonify(get_cached('goals', get_goals))
+    except:
+        return jsonify({'water': 8, 'stand': 6, 'exercise': 30})
 
 @app.route('/api/streak')
 def api_streak():
-    return jsonify({'streak': calculate_streak()})
+    try:
+        return jsonify({'streak': get_cached('streak', calculate_streak)})
+    except:
+        return jsonify({'streak': 0})
 
 @app.route('/api/weight')
 def api_weight():
-    return jsonify(get_weight_stats())
+    try:
+        return jsonify(get_cached('weight', get_weight_stats))
+    except:
+        return jsonify({'current': None, 'week_change': None, 'month_change': None})
 
 # ===== PWA 記錄 API =====
 @app.route('/api/log/water', methods=['POST'])
