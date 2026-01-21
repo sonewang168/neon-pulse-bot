@@ -347,34 +347,57 @@ def get_weight_stats():
     
     return stats
 
-# ===== 寫入函式（優化版）=====
+# ===== 寫入函式（加入防重複）=====
 def write_water():
-    """新增喝水記錄（快速版）"""
+    """新增喝水記錄（含防重複）"""
     today = get_today()
+    now = datetime.now(TZ)
     sheet = get_sheet('water_log')
     
-    # 先讀取今日數量
+    # 讀取今日資料
     data = sheet.get_all_values()[1:]
-    count = sum(1 for r in data if r and len(r) > 0 and r[0].startswith(today))
+    today_records = [r for r in data if r and len(r) > 0 and r[0].startswith(today)]
+    count = len(today_records)
+    
+    # 防重複：檢查最後一筆是否在 30 秒內
+    if today_records:
+        try:
+            last_time_str = today_records[-1][0]
+            last_time = datetime.strptime(last_time_str, '%Y-%m-%d %H:%M:%S').replace(tzinfo=TZ)
+            if (now - last_time).total_seconds() < 30:
+                print(f"[防重複] 喝水記錄跳過，距上次僅 {(now - last_time).total_seconds():.1f} 秒")
+                return count  # 不寫入，返回原本數量
+        except:
+            pass
     
     # 寫入新記錄
     sheet.append_row([get_now()])
-    
-    # 返回新數量（不重新讀取）
     return count + 1
 
 def write_stand():
-    """新增起身記錄（快速版）"""
+    """新增起身記錄（含防重複）"""
     today = get_today()
+    now = datetime.now(TZ)
     sheet = get_sheet('stand_log')
     
-    # 先讀取今日數量
+    # 讀取今日資料
     data = sheet.get_all_values()[1:]
-    count = sum(1 for r in data if r and len(r) > 0 and r[0].startswith(today))
+    today_records = [r for r in data if r and len(r) > 0 and r[0].startswith(today)]
+    count = len(today_records)
+    
+    # 防重複：檢查最後一筆是否在 30 秒內
+    if today_records:
+        try:
+            last_time_str = today_records[-1][0]
+            last_time = datetime.strptime(last_time_str, '%Y-%m-%d %H:%M:%S').replace(tzinfo=TZ)
+            if (now - last_time).total_seconds() < 30:
+                print(f"[防重複] 起身記錄跳過，距上次僅 {(now - last_time).total_seconds():.1f} 秒")
+                return count  # 不寫入，返回原本數量
+        except:
+            pass
     
     # 寫入新記錄
     sheet.append_row([get_now()])
-    
     return count + 1
 
 def write_exercise(ex_type, duration):
@@ -1121,6 +1144,34 @@ def handle_message(event):
             elif text == '關閉提醒':
                 write_setting('enabled', 'FALSE')
                 msgs.append(TextMessage(text="✅ 提醒已關閉", quick_reply=qr(QR_MAIN)))
+            
+            # ===== 稍後提醒 =====
+            elif text == '稍後提醒喝水':
+                # 記錄延後時間（10分鐘後）
+                delay_time = (datetime.now(TZ) + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+                write_setting('water_snooze', delay_time)
+                msgs.append(TextMessage(text="⏰ 好的，10 分鐘後再提醒你喝水！", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '稍後提醒起身':
+                delay_time = (datetime.now(TZ) + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+                write_setting('stand_snooze', delay_time)
+                msgs.append(TextMessage(text="⏰ 好的，10 分鐘後再提醒你起身！", quick_reply=qr(QR_MAIN)))
+            
+            # ===== 今日不提醒 =====
+            elif text == '今日不提醒喝水':
+                today_end = datetime.now(TZ).strftime('%Y-%m-%d') + ' 23:59:59'
+                write_setting('water_snooze', today_end)
+                msgs.append(TextMessage(text="🔕 今日不再提醒喝水\n明天會恢復提醒", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '今日不提醒起身':
+                today_end = datetime.now(TZ).strftime('%Y-%m-%d') + ' 23:59:59'
+                write_setting('stand_snooze', today_end)
+                msgs.append(TextMessage(text="🔕 今日不再提醒起身\n明天會恢復提醒", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '今日不運動':
+                today = datetime.now(TZ).strftime('%Y-%m-%d')
+                write_setting('exercise_skip', today)
+                msgs.append(TextMessage(text="😴 好的，今天好好休息！\n記得明天要動起來喔", quick_reply=qr(QR_MAIN)))
             
             # ===== 目標設定 =====
             elif text.startswith('喝水目標'):
