@@ -756,7 +756,13 @@ def write_setting(key, value):
         sheet.update_cell(2, headers.index(key) + 1, value)
         clear_cache()  # 清除所有快取
         return True
-    return False
+    else:
+        # 欄位不存在，新增欄位
+        new_col = len(headers) + 1
+        sheet.update_cell(1, new_col, key)
+        sheet.update_cell(2, new_col, value)
+        clear_cache()
+        return True
 
 def set_count(log_type, target):
     today = get_today()
