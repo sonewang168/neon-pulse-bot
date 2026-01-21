@@ -5,6 +5,7 @@
 
 import os
 import json
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import time
@@ -279,6 +280,16 @@ def calculate_streak():
     
     return streak
 
+def normalize_time_format(t):
+    """正規化時間格式為 HH:mm"""
+    if not t:
+        return None
+    match = re.search(r'(\d{1,2}):(\d{2})', str(t))
+    if match:
+        h, m = match.groups()
+        return f"{int(h):02d}:{m}"
+    return None
+
 def read_settings():
     data = get_sheet('settings').get_all_records()
     if data:
@@ -292,6 +303,9 @@ def read_settings():
         settings.setdefault('water_goal', 8)
         settings.setdefault('stand_goal', 6)
         settings.setdefault('exercise_goal', 30)
+        # 正規化時間格式
+        settings['dnd_start'] = normalize_time_format(settings.get('dnd_start')) or '22:00'
+        settings['dnd_end'] = normalize_time_format(settings.get('dnd_end')) or '08:00'
         return settings
     return {
         'water_interval': 60, 'stand_interval': 45, 
@@ -1164,11 +1178,18 @@ def handle_message(event):
                     msgs.append(TextMessage(text="格式：久坐間隔 數字", quick_reply=qr(QR_MAIN)))
             
             elif text.startswith('勿擾'):
-                p = text.replace('勿擾', '').strip().split('-')
-                if len(p) == 2:
-                    write_setting('dnd_start', p[0].strip())
-                    write_setting('dnd_end', p[1].strip())
-                    msgs.append(TextMessage(text=f"✅ 勿擾：{p[0].strip()}-{p[1].strip()}", quick_reply=qr(QR_MAIN)))
+                # 用正則提取時間 (支援 6:00 或 06:00 格式)
+                times = re.findall(r'(\d{1,2}:\d{2})', text)
+                if len(times) == 2:
+                    # 正規化為 HH:mm 格式
+                    def normalize_time(t):
+                        h, m = t.split(':')
+                        return f"{int(h):02d}:{m}"
+                    start = normalize_time(times[0])
+                    end = normalize_time(times[1])
+                    write_setting('dnd_start', start)
+                    write_setting('dnd_end', end)
+                    msgs.append(TextMessage(text=f"✅ 勿擾：{start}-{end}", quick_reply=qr(QR_MAIN)))
                 else:
                     msgs.append(TextMessage(text="格式：勿擾 22:00-08:00", quick_reply=qr(QR_MAIN)))
             
