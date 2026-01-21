@@ -393,6 +393,262 @@ def get_weight_stats():
     return stats
 
 # ===== 寫入函式（加入防重複）=====
+
+# ===== 成就系統 =====
+ACHIEVEMENTS = {
+    'streak_7': {'name': '🔥 七日燃燒', 'desc': '連續達標 7 天'},
+    'streak_30': {'name': '💎 鑽石毅力', 'desc': '連續達標 30 天'},
+    'streak_100': {'name': '👑 百日王者', 'desc': '連續達標 100 天'},
+    'water_100': {'name': '💧 水滴石穿', 'desc': '累計喝水 100 杯'},
+    'water_500': {'name': '🌊 涓涓細流', 'desc': '累計喝水 500 杯'},
+    'water_1000': {'name': '🏆 千杯達人', 'desc': '累計喝水 1000 杯'},
+    'stand_100': {'name': '🧍 初級活力', 'desc': '累計起身 100 次'},
+    'stand_500': {'name': '🚶 健步如飛', 'desc': '累計起身 500 次'},
+    'exercise_500': {'name': '🏃 運動新手', 'desc': '累計運動 500 分鐘'},
+    'exercise_2000': {'name': '💪 運動達人', 'desc': '累計運動 2000 分鐘'},
+    'sleep_7': {'name': '😴 規律作息', 'desc': '連續記錄睡眠 7 天'},
+    'meal_7': {'name': '🥗 均衡飲食', 'desc': '連續記錄飲食 7 天'},
+    'mood_14': {'name': '😊 情緒管理師', 'desc': '連續記錄心情 14 天'},
+}
+
+MOOD_OPTIONS = {'😄': 5, '🙂': 4, '😐': 3, '😔': 2, '😢': 1, '😡': 1, '😰': 2, '😴': 2}
+
+FOOD_CALORIES = {
+    '白飯': 280, '麵': 350, '吐司': 130, '饅頭': 220, '粥': 150, '麵包': 200,
+    '蛋餅': 300, '三明治': 350, '雞腿': 300, '雞胸': 200, '豬排': 350,
+    '牛排': 400, '魚': 200, '蝦': 100, '滷肉': 250, '沙拉': 100, '青菜': 50,
+    '湯': 80, '奶茶': 350, '咖啡': 100, '豆漿': 120, '果汁': 150,
+    '便當': 700, '漢堡': 500, '薯條': 300, '披薩': 250, '水果': 100,
+}
+
+def get_or_create_sheet(name, headers):
+    """取得或建立工作表"""
+    try:
+        return get_sheet(name)
+    except:
+        ss = get_gspread_client().open_by_key(SPREADSHEET_ID)
+        sheet = ss.add_worksheet(title=name, rows=1000, cols=len(headers))
+        sheet.append_row(headers)
+        return sheet
+
+# ===== 睡眠記錄 =====
+def write_sleep(hours, quality, note=''):
+    """記錄睡眠"""
+    sheet = get_or_create_sheet('sleep_log', ['日期', '時數', '品質(1-5)', '備註'])
+    today = get_today()
+    sheet.append_row([today, hours, quality, note])
+    clear_cache()
+    return hours, quality
+
+def read_sleep_history(days=30):
+    """讀取睡眠歷史"""
+    try:
+        data = get_sheet('sleep_log').get_all_values()[1:]
+    except:
+        return []
+    
+    cutoff = (datetime.now(TZ) - timedelta(days=days)).strftime('%Y-%m-%d')
+    return [{'date': r[0], 'hours': float(r[1]), 'quality': int(r[2]), 'note': r[3] if len(r) > 3 else ''} 
+            for r in data if r and r[0] >= cutoff]
+
+def get_sleep_stats():
+    """取得睡眠統計"""
+    history = read_sleep_history(30)
+    if not history:
+        return None
+    
+    avg_hours = sum(h['hours'] for h in history) / len(history)
+    avg_quality = sum(h['quality'] for h in history) / len(history)
+    
+    return {
+        'avg_hours': round(avg_hours, 1),
+        'avg_quality': round(avg_quality, 1),
+        'records': len(history),
+        'latest': history[-1] if history else None
+    }
+
+# ===== 飲食記錄 =====
+def write_meal(meal_type, foods, calories=0, note=''):
+    """記錄飲食"""
+    sheet = get_or_create_sheet('meal_log', ['時間', '餐別', '食物', '熱量', '備註'])
+    
+    # 自動計算熱量
+    if calories == 0 and foods:
+        for food in foods.split('、'):
+            food = food.strip()
+            if food in FOOD_CALORIES:
+                calories += FOOD_CALORIES[food]
+    
+    sheet.append_row([get_now(), meal_type, foods, calories, note])
+    clear_cache()
+    return calories
+
+def read_meal_today():
+    """讀取今日飲食"""
+    try:
+        data = get_sheet('meal_log').get_all_values()[1:]
+    except:
+        return []
+    
+    today = get_today()
+    return [{'time': r[0], 'type': r[1], 'foods': r[2], 'calories': int(r[3]) if r[3] else 0} 
+            for r in data if r and r[0].startswith(today)]
+
+def get_meal_stats():
+    """取得今日飲食統計"""
+    meals = read_meal_today()
+    total_cal = sum(m['calories'] for m in meals)
+    return {
+        'meals': meals,
+        'total_calories': total_cal,
+        'meal_count': len(meals)
+    }
+
+# ===== 心情記錄 =====
+def write_mood(emoji, note=''):
+    """記錄心情"""
+    sheet = get_or_create_sheet('mood_log', ['時間', '心情', '分數', '備註'])
+    score = MOOD_OPTIONS.get(emoji, 3)
+    sheet.append_row([get_now(), emoji, score, note])
+    clear_cache()
+    return emoji, score
+
+def read_mood_history(days=30):
+    """讀取心情歷史"""
+    try:
+        data = get_sheet('mood_log').get_all_values()[1:]
+    except:
+        return []
+    
+    cutoff = (datetime.now(TZ) - timedelta(days=days)).strftime('%Y-%m-%d')
+    return [{'time': r[0], 'emoji': r[1], 'score': int(r[2]), 'note': r[3] if len(r) > 3 else ''} 
+            for r in data if r and r[0] >= cutoff]
+
+def get_mood_stats():
+    """取得心情統計"""
+    history = read_mood_history(30)
+    if not history:
+        return None
+    
+    avg_score = sum(h['score'] for h in history) / len(history)
+    mood_counts = {}
+    for h in history:
+        mood_counts[h['emoji']] = mood_counts.get(h['emoji'], 0) + 1
+    
+    return {
+        'avg_score': round(avg_score, 1),
+        'records': len(history),
+        'distribution': mood_counts,
+        'latest': history[-1] if history else None
+    }
+
+# ===== 成就計算 =====
+def get_total_stats():
+    """取得累計統計"""
+    try:
+        water = len(get_sheet('water_log').get_all_values()) - 1
+        stand = len(get_sheet('stand_log').get_all_values()) - 1
+        exercise_data = get_sheet('exercise_log').get_all_values()[1:]
+        exercise = sum(int(r[2]) for r in exercise_data if r and len(r) > 2 and r[2])
+    except:
+        water, stand, exercise = 0, 0, 0
+    
+    return {'total_water': water, 'total_stand': stand, 'total_exercise': exercise}
+
+def get_streak_stats():
+    """取得連續記錄統計"""
+    streak = calculate_streak()
+    
+    # 計算睡眠連續天數
+    sleep_streak = 0
+    try:
+        sleep_data = get_sheet('sleep_log').get_all_values()[1:]
+        dates = set(r[0] for r in sleep_data if r)
+        today = datetime.now(TZ).date()
+        for i in range(100):
+            check_date = (today - timedelta(days=i)).strftime('%Y-%m-%d')
+            if check_date in dates:
+                sleep_streak += 1
+            else:
+                break
+    except:
+        pass
+    
+    # 計算飲食連續天數
+    meal_streak = 0
+    try:
+        meal_data = get_sheet('meal_log').get_all_values()[1:]
+        dates = set(r[0][:10] for r in meal_data if r)
+        today = datetime.now(TZ).date()
+        for i in range(100):
+            check_date = (today - timedelta(days=i)).strftime('%Y-%m-%d')
+            if check_date in dates:
+                meal_streak += 1
+            else:
+                break
+    except:
+        pass
+    
+    # 計算心情連續天數
+    mood_streak = 0
+    try:
+        mood_data = get_sheet('mood_log').get_all_values()[1:]
+        dates = set(r[0][:10] for r in mood_data if r)
+        today = datetime.now(TZ).date()
+        for i in range(100):
+            check_date = (today - timedelta(days=i)).strftime('%Y-%m-%d')
+            if check_date in dates:
+                mood_streak += 1
+            else:
+                break
+    except:
+        pass
+    
+    return {'streak': streak, 'sleep_streak': sleep_streak, 'meal_streak': meal_streak, 'mood_streak': mood_streak}
+
+def get_achievements():
+    """取得已解鎖成就"""
+    totals = get_total_stats()
+    streaks = get_streak_stats()
+    stats = {**totals, **streaks}
+    
+    unlocked = []
+    for key, ach in ACHIEVEMENTS.items():
+        # 檢查條件
+        if key == 'streak_7' and stats.get('streak', 0) >= 7:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'streak_30' and stats.get('streak', 0) >= 30:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'streak_100' and stats.get('streak', 0) >= 100:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'water_100' and stats.get('total_water', 0) >= 100:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'water_500' and stats.get('total_water', 0) >= 500:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'water_1000' and stats.get('total_water', 0) >= 1000:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'stand_100' and stats.get('total_stand', 0) >= 100:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'stand_500' and stats.get('total_stand', 0) >= 500:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'exercise_500' and stats.get('total_exercise', 0) >= 500:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'exercise_2000' and stats.get('total_exercise', 0) >= 2000:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'sleep_7' and stats.get('sleep_streak', 0) >= 7:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'meal_7' and stats.get('meal_streak', 0) >= 7:
+            unlocked.append({**ach, 'id': key})
+        elif key == 'mood_14' and stats.get('mood_streak', 0) >= 14:
+            unlocked.append({**ach, 'id': key})
+    
+    return {
+        'unlocked': unlocked,
+        'total': len(ACHIEVEMENTS),
+        'unlocked_count': len(unlocked),
+        'stats': stats
+    }
+
 def write_water():
     """新增喝水記錄（含防重複）"""
     today = get_today()
@@ -1273,6 +1529,97 @@ def handle_message(event):
                 goals = get_goals()
                 msgs.append(TextMessage(text=f"📊 目前每日目標\n\n💧 喝水：{goals['water']} 杯\n🧍 起身：{goals['stand']} 次\n🏃 運動：{goals['exercise']} 分鐘\n\n修改方式：\n• 喝水目標 10\n• 起身目標 8\n• 運動目標 45", quick_reply=qr(QR_MAIN)))
             
+            # ===== V11 新功能 =====
+            
+            # 睡眠記錄
+            elif text == '記錄睡眠' or text == '睡眠':
+                msgs.append(TextMessage(text="😴 記錄睡眠\n\n格式：睡眠 時數 品質(1-5)\n例如：睡眠 7.5 4\n\n品質說明：\n5=很好 4=好 3=普通 2=差 1=很差", quick_reply=qr(QR_MAIN)))
+            
+            elif text.startswith('睡眠 ') or text.startswith('睡眠記錄 '):
+                parts = text.split()
+                if len(parts) >= 3:
+                    try:
+                        hours = float(parts[1])
+                        quality = int(parts[2])
+                        note = ' '.join(parts[3:]) if len(parts) > 3 else ''
+                        if 0 < hours <= 24 and 1 <= quality <= 5:
+                            write_sleep(hours, quality, note)
+                            q_text = ['', '😫很差', '😔差', '😐普通', '🙂好', '😴很好'][quality]
+                            msgs.append(TextMessage(text=f"✅ 睡眠記錄成功！\n\n⏰ 時數：{hours} 小時\n😴 品質：{q_text}\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+                        else:
+                            msgs.append(TextMessage(text="⚠️ 時數需在0-24，品質需在1-5", quick_reply=qr(QR_MAIN)))
+                    except:
+                        msgs.append(TextMessage(text="格式錯誤，例如：睡眠 7.5 4", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text="格式：睡眠 時數 品質\n例如：睡眠 7.5 4", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '睡眠統計':
+                stats = get_sleep_stats()
+                if stats:
+                    msgs.append(TextMessage(text=f"😴 睡眠統計（近30天）\n\n⏰ 平均時數：{stats['avg_hours']} 小時\n⭐ 平均品質：{stats['avg_quality']}/5\n📊 記錄次數：{stats['records']} 次", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text="還沒有睡眠記錄\n\n輸入「記錄睡眠」開始記錄", quick_reply=qr(QR_MAIN)))
+            
+            # 飲食記錄
+            elif text == '記錄飲食' or text == '飲食':
+                msgs.append(TextMessage(text="🍎 記錄飲食\n\n格式：餐別 食物\n例如：早餐 吐司、豆漿\n\n餐別：早餐/午餐/晚餐/點心\n\n或輸入熱量：\n午餐 便當 700卡", quick_reply=qr(QR_MAIN)))
+            
+            elif any(text.startswith(m) for m in ['早餐', '午餐', '晚餐', '點心']):
+                parts = text.split(maxsplit=1)
+                if len(parts) >= 2:
+                    meal_type = parts[0]
+                    rest = parts[1]
+                    
+                    # 檢查是否有自訂熱量
+                    cal_match = re.search(r'(\d+)\s*[卡kcal]', rest)
+                    if cal_match:
+                        calories = int(cal_match.group(1))
+                        foods = re.sub(r'\d+\s*[卡kcal]', '', rest).strip()
+                    else:
+                        calories = 0
+                        foods = rest
+                    
+                    cal = write_meal(meal_type, foods, calories)
+                    msgs.append(TextMessage(text=f"✅ {meal_type}記錄成功！\n\n🍽️ 食物：{foods}\n🔥 熱量：約 {cal} 大卡", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text=f"請輸入食物內容\n例如：{parts[0]} 便當", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '今日飲食' or text == '飲食統計':
+                stats = get_meal_stats()
+                if stats['meals']:
+                    meal_text = '\n'.join([f"• {m['type']}：{m['foods']} ({m['calories']}卡)" for m in stats['meals']])
+                    msgs.append(TextMessage(text=f"🍎 今日飲食\n\n{meal_text}\n\n📊 總熱量：{stats['total_calories']} 大卡", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text="今天還沒有飲食記錄\n\n輸入「記錄飲食」開始記錄", quick_reply=qr(QR_MAIN)))
+            
+            # 心情記錄
+            elif text == '記錄心情' or text == '心情':
+                msgs.append(TextMessage(text="😊 記錄心情\n\n直接輸入表情符號：\n😄 開心\n🙂 普通\n😐 平靜\n😔 低落\n😢 難過\n😡 生氣\n😰 焦慮\n😴 疲憊\n\n可加備註：😄 今天很棒", quick_reply=qr(QR_MAIN)))
+            
+            elif text[0] in MOOD_OPTIONS:
+                emoji = text[0]
+                note = text[1:].strip()
+                write_mood(emoji, note)
+                score = MOOD_OPTIONS[emoji]
+                msgs.append(TextMessage(text=f"✅ 心情記錄成功！\n\n{emoji} 分數：{score}/5\n📝 備註：{note if note else '無'}", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '心情統計':
+                stats = get_mood_stats()
+                if stats:
+                    dist = ' '.join([f"{e}{c}次" for e, c in stats['distribution'].items()])
+                    msgs.append(TextMessage(text=f"😊 心情統計（近30天）\n\n⭐ 平均分數：{stats['avg_score']}/5\n📊 記錄次數：{stats['records']} 次\n\n分布：{dist}", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text="還沒有心情記錄\n\n輸入「記錄心情」開始記錄", quick_reply=qr(QR_MAIN)))
+            
+            # 成就系統
+            elif text == '成就' or text == '徽章':
+                ach = get_achievements()
+                if ach['unlocked']:
+                    badges = '\n'.join([f"{a['name']} - {a['desc']}" for a in ach['unlocked']])
+                    msgs.append(TextMessage(text=f"🏆 已解鎖成就 ({ach['unlocked_count']}/{ach['total']})\n\n{badges}\n\n📊 累計統計：\n💧 喝水 {ach['stats']['total_water']} 杯\n🧍 起身 {ach['stats']['total_stand']} 次\n🏃 運動 {ach['stats']['total_exercise']} 分鐘", quick_reply=qr(QR_MAIN)))
+                else:
+                    msgs.append(TextMessage(text=f"🏆 成就系統\n\n尚未解鎖任何成就\n繼續努力！\n\n📊 累計統計：\n💧 喝水 {ach['stats']['total_water']} 杯\n🧍 起身 {ach['stats']['total_stand']} 次\n🏃 運動 {ach['stats']['total_exercise']} 分鐘", quick_reply=qr(QR_MAIN)))
+            
             else:
                 msgs.append(TextMessage(text="🤖 請使用下方按鈕", quick_reply=qr(QR_MAIN)))
             
@@ -1378,6 +1725,80 @@ def api_weight():
         return jsonify(get_cached('weight', get_weight_stats))
     except:
         return jsonify({'current': None, 'week_change': None, 'month_change': None})
+
+# ===== V11 新功能 API =====
+@app.route('/api/sleep')
+def api_sleep():
+    try:
+        return jsonify(get_sleep_stats() or {})
+    except:
+        return jsonify({})
+
+@app.route('/api/meal')
+def api_meal():
+    try:
+        return jsonify(get_meal_stats())
+    except:
+        return jsonify({'meals': [], 'total_calories': 0})
+
+@app.route('/api/mood')
+def api_mood():
+    try:
+        return jsonify(get_mood_stats() or {})
+    except:
+        return jsonify({})
+
+@app.route('/api/achievements')
+def api_achievements():
+    try:
+        return jsonify(get_achievements())
+    except:
+        return jsonify({'unlocked': [], 'total': 0, 'unlocked_count': 0})
+
+@app.route('/api/log/sleep', methods=['POST'])
+def api_log_sleep():
+    try:
+        data = request.get_json() or {}
+        hours = float(data.get('hours', 0))
+        quality = int(data.get('quality', 3))
+        note = data.get('note', '')
+        
+        if hours <= 0 or hours > 24:
+            return jsonify({'success': False, 'error': '時數需在0-24之間'}), 400
+        if quality < 1 or quality > 5:
+            return jsonify({'success': False, 'error': '品質需在1-5之間'}), 400
+        
+        write_sleep(hours, quality, note)
+        return jsonify({'success': True, 'hours': hours, 'quality': quality, 'message': f'已記錄睡眠 {hours} 小時，品質 {quality}/5'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/log/meal', methods=['POST'])
+def api_log_meal():
+    try:
+        data = request.get_json() or {}
+        meal_type = data.get('type', '其他')
+        foods = data.get('foods', '')
+        calories = int(data.get('calories', 0))
+        note = data.get('note', '')
+        
+        cal = write_meal(meal_type, foods, calories, note)
+        return jsonify({'success': True, 'type': meal_type, 'foods': foods, 'calories': cal, 'message': f'{meal_type}記錄成功，約 {cal} 大卡'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/log/mood', methods=['POST'])
+def api_log_mood():
+    try:
+        data = request.get_json() or {}
+        emoji = data.get('emoji', '😐')
+        note = data.get('note', '')
+        
+        write_mood(emoji, note)
+        score = MOOD_OPTIONS.get(emoji, 3)
+        return jsonify({'success': True, 'emoji': emoji, 'score': score, 'message': f'心情記錄成功 {emoji}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ===== PWA 記錄 API =====
 @app.route('/api/log/water', methods=['POST'])
