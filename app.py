@@ -1637,9 +1637,28 @@ def handle_message(event):
                     for meal_type in ['早餐', '午餐', '晚餐', '點心']:
                         items = by_type[meal_type]
                         if items:
-                            foods = '、'.join([f"{m['foods']}({m['calories']}卡)" for m in items])
+                            # 解析每個食物並顯示獨立熱量
+                            all_foods = []
+                            for m in items:
+                                food_list = re.split(r'[、，,\s]+', m['foods'])
+                                for food in food_list:
+                                    food = food.strip()
+                                    if not food:
+                                        continue
+                                    # 查詢熱量
+                                    cal = FOOD_CALORIES.get(food, 0)
+                                    if cal == 0:
+                                        for key, val in FOOD_CALORIES.items():
+                                            if key in food or food in key:
+                                                cal = val
+                                                break
+                                    if cal > 0:
+                                        all_foods.append(f"{food}({cal}卡)")
+                                    else:
+                                        all_foods.append(food)
+                            
                             cal_sum = sum(m['calories'] for m in items)
-                            meal_text += f"🍽️ {meal_type}：{foods}\n"
+                            meal_text += f"🍽️ {meal_type}：{'、'.join(all_foods)} = {cal_sum}卡\n"
                     
                     msgs.append(TextMessage(text=f"🍎 今日飲食\n\n{meal_text.strip()}\n\n📊 總熱量：{stats['total_calories']} 大卡", quick_reply=qr(QR_MAIN)))
                 else:
