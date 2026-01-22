@@ -1635,7 +1635,27 @@ def handle_message(event):
                         foods = rest
                     
                     cal = write_meal(meal_type, foods, calories)
-                    msgs.append(TextMessage(text=f"✅ {meal_type}記錄成功！\n\n🍽️ 食物：{foods}\n🔥 熱量：約 {cal} 大卡", quick_reply=qr(QR_MAIN)))
+                    
+                    # 顯示個別食物熱量
+                    food_details = []
+                    food_list = re.split(r'[、，,\s]+', foods)
+                    for food in food_list:
+                        food = food.strip()
+                        if not food:
+                            continue
+                        food_cal = FOOD_CALORIES.get(food, 0)
+                        if food_cal == 0:
+                            for key, val in FOOD_CALORIES.items():
+                                if key in food or food in key:
+                                    food_cal = val
+                                    break
+                        if food_cal > 0:
+                            food_details.append(f"{food}({food_cal}卡)")
+                        else:
+                            food_details.append(food)
+                    
+                    food_str = '、'.join(food_details)
+                    msgs.append(TextMessage(text=f"✅ {meal_type}記錄成功！\n\n🍽️ 食物：{food_str}\n🔥 總熱量：約 {cal} 大卡", quick_reply=qr(QR_MAIN)))
                 else:
                     msgs.append(TextMessage(text=f"請輸入食物內容\n例如：{parts[0]} 便當", quick_reply=qr(QR_MAIN)))
             
