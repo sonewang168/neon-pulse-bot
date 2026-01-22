@@ -4,156 +4,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0a12">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>⚡ Neon Pulse</title>
     <link rel="manifest" href="/manifest.json">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        :root{--bg:#0a0a12;--bg2:#1a1a2e;--cyan:#00f5ff;--green:#39ff14;--orange:#ff6b00;--pink:#ff0080;--gray:#888;--white:#fff;--red:#ff4444}
+        :root{--bg:#0a0a12;--bg2:#1a1a2e;--cyan:#00f5ff;--green:#39ff14;--orange:#ff6b00;--pink:#ff0080;--purple:#9966ff;--gold:#ffd700;--gray:#888;--white:#fff;--red:#ff4444}
         body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--white);min-height:100vh;padding-bottom:70px}
         .header{background:linear-gradient(135deg,#1a1a2e,#0a0a12);padding:12px 15px;text-align:center;border-bottom:1px solid var(--cyan);position:sticky;top:0;z-index:100}
-        .header h1{font-size:1.2rem;background:linear-gradient(90deg,var(--cyan),#8888ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-        .header .date{color:var(--gray);font-size:0.75rem;margin-top:2px}
-        .header .streak{display:inline-block;background:var(--bg);border:1px solid var(--orange);color:var(--orange);padding:2px 8px;border-radius:12px;font-size:0.7rem;margin-top:5px}
-        .container{padding:12px;max-width:480px;margin:0 auto}
-        .tabs{display:flex;background:var(--bg2);border-radius:8px;margin-bottom:12px;overflow:hidden}
-        .tab{flex:1;padding:8px;text-align:center;color:var(--gray);cursor:pointer;font-size:0.8rem;transition:all 0.2s}
-        .tab.active{background:var(--cyan);color:var(--bg);font-weight:bold}
+        .header h1{font-size:1.2rem;background:linear-gradient(90deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .header .sub{display:flex;justify-content:center;gap:15px;margin-top:5px}
+        .header .date{color:var(--gray);font-size:0.75rem}
+        .header .streak{background:var(--bg);border:1px solid var(--orange);color:var(--orange);padding:2px 8px;border-radius:12px;font-size:0.7rem}
+        .container{padding:12px;max-width:500px;margin:0 auto}
+        .tabs{display:flex;background:var(--bg2);border-radius:8px;margin-bottom:12px;overflow-x:auto}
+        .tab{flex:0 0 auto;padding:8px 12px;color:var(--gray);cursor:pointer;font-size:0.75rem;white-space:nowrap;transition:all 0.2s}
+        .tab.active{background:var(--cyan);color:var(--bg);font-weight:bold;border-radius:8px}
         .tab-content{display:none}.tab-content.active{display:block}
-        .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+        .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+        .stats-grid.three{grid-template-columns:repeat(3,1fr)}
         .stat-card{background:var(--bg2);border-radius:10px;padding:10px;border:1px solid transparent;cursor:pointer;transition:all 0.2s}
         .stat-card:active{transform:scale(0.98)}
         .stat-card.water{border-color:var(--cyan)}.stat-card.stand{border-color:var(--green)}.stat-card.exercise{border-color:var(--orange)}.stat-card.calories{border-color:var(--pink)}
-        .stat-card .icon{font-size:1.3rem}.stat-card .value{font-size:1.6rem;font-weight:bold}
+        .stat-card.sleep{border-color:var(--purple)}.stat-card.meal{border-color:var(--gold)}.stat-card.mood{border-color:var(--pink)}
+        .stat-card .icon{font-size:1.3rem}.stat-card .value{font-size:1.5rem;font-weight:bold}
         .stat-card.water .value{color:var(--cyan)}.stat-card.stand .value{color:var(--green)}.stat-card.exercise .value{color:var(--orange)}.stat-card.calories .value{color:var(--pink)}
-        .stat-card .label{color:var(--gray);font-size:0.7rem}
-        .stat-card .progress{margin-top:6px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+        .stat-card.sleep .value{color:var(--purple)}.stat-card.meal .value{color:var(--gold)}.stat-card.mood .value{color:var(--pink)}
+        .stat-card .label{color:var(--gray);font-size:0.65rem}
+        .stat-card .progress{margin-top:5px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
         .stat-card .progress-bar{height:100%;border-radius:2px;transition:width 0.3s}
         .stat-card.water .progress-bar{background:var(--cyan)}.stat-card.stand .progress-bar{background:var(--green)}.stat-card.exercise .progress-bar{background:var(--orange)}
-        .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
-        .action-btn{background:var(--bg2);border:1px solid var(--gray);border-radius:8px;padding:10px 6px;color:var(--white);font-size:0.75rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.2s}
+        .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+        .action-btn{background:var(--bg2);border:1px solid var(--gray);border-radius:8px;padding:8px 4px;color:var(--white);font-size:0.65rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all 0.2s}
         .action-btn:active{transform:scale(0.95)}.action-btn:disabled{opacity:0.5}
-        .action-btn.water{border-color:var(--cyan)}.action-btn.stand{border-color:var(--green)}.action-btn.exercise{border-color:var(--orange)}
-        .action-btn .icon{font-size:1.2rem}
+        .action-btn .icon{font-size:1.1rem}
         .section{background:var(--bg2);border-radius:10px;padding:12px;margin-bottom:12px}
-        .section-title{color:var(--gray);font-size:0.75rem;margin-bottom:8px}
+        .section-title{color:var(--gray);font-size:0.75rem;margin-bottom:8px;display:flex;justify-content:space-between}
         .form-group{margin-bottom:10px}
-        .form-label{color:var(--gray);font-size:0.75rem;margin-bottom:4px;display:block}
-        .form-input{width:100%;padding:8px;background:var(--bg);border:1px solid #333;border-radius:6px;color:var(--white);font-size:0.9rem}
+        .form-label{color:var(--gray);font-size:0.7rem;margin-bottom:4px;display:block}
+        .form-input{width:100%;padding:8px;background:var(--bg);border:1px solid #333;border-radius:6px;color:var(--white);font-size:0.85rem}
         .form-input:focus{outline:none;border-color:var(--cyan)}
         .form-row{display:flex;gap:8px}.form-row .form-group{flex:1}
-        .btn{width:100%;padding:10px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;transition:all 0.2s}
+        select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+        .btn{width:100%;padding:10px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;transition:all 0.2s}
         .btn:active{transform:scale(0.98)}
         .btn-primary{background:var(--cyan);color:var(--bg)}.btn-success{background:var(--green);color:var(--bg)}.btn-warning{background:var(--orange);color:var(--bg)}.btn-secondary{background:var(--bg);color:var(--white);border:1px solid var(--gray)}
+        .btn-purple{background:var(--purple);color:var(--white)}.btn-pink{background:var(--pink);color:var(--white)}.btn-gold{background:var(--gold);color:var(--bg)}
         .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
         .toggle{width:44px;height:24px;background:#333;border-radius:12px;position:relative;cursor:pointer}
         .toggle.on{background:var(--green)}
         .toggle::after{content:'';position:absolute;width:20px;height:20px;background:var(--white);border-radius:50%;top:2px;left:2px;transition:all 0.2s}
         .toggle.on::after{left:22px}
-        .week-bars{display:flex;justify-content:space-between;height:80px;padding:8px 0}
+        .badge{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--gold);color:var(--gold);padding:5px 10px;border-radius:15px;font-size:0.7rem;margin:3px}
+        .badge.locked{border-color:var(--gray);color:var(--gray);opacity:0.5}
+        .mood-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+        .mood-btn{background:var(--bg);border:1px solid #333;border-radius:8px;padding:10px;font-size:1.5rem;cursor:pointer;transition:all 0.2s}
+        .mood-btn:active{transform:scale(0.95)}
+        .mood-btn.selected{border-color:var(--pink);background:var(--bg2)}
+        .meal-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #333}
+        .meal-item:last-child{border-bottom:none}
+        .week-bars{display:flex;justify-content:space-between;height:70px;padding:5px 0}
         .day-bar{display:flex;flex-direction:column;align-items:center;flex:1}
-        .day-bar .bars{display:flex;gap:2px;align-items:flex-end;height:50px}
-        .day-bar .bar{width:5px;border-radius:2px}
+        .day-bar .bars{display:flex;gap:2px;align-items:flex-end;height:45px}
+        .day-bar .bar{width:4px;border-radius:2px}
         .day-bar .bar.water{background:var(--cyan)}.day-bar .bar.stand{background:var(--green)}.day-bar .bar.exercise{background:var(--orange)}
-        .day-bar .weekday{margin-top:4px;font-size:0.6rem;color:var(--gray)}
-        .weight-display{text-align:center;padding:10px 0}
-        .weight-display .value{font-size:2.5rem;font-weight:bold}
-        .weight-display .unit{color:var(--gray);font-size:1rem}
-        .weight-changes{display:flex;justify-content:center;gap:25px;margin-top:8px}
-        .weight-change{text-align:center}
-        .weight-change .label{color:var(--gray);font-size:0.7rem}
-        .weight-change .value{font-size:0.9rem}
-        .weight-change .value.up{color:var(--red)}.weight-change .value.down{color:var(--green)}
-        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid #333;display:flex;justify-content:space-around;padding:6px 0;padding-bottom:max(6px,env(safe-area-inset-bottom))}
-        .nav-item{display:flex;flex-direction:column;align-items:center;color:var(--gray);font-size:0.6rem;padding:4px 8px;cursor:pointer}
+        .day-bar .weekday{margin-top:3px;font-size:0.55rem;color:var(--gray)}
+        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid #333;display:flex;justify-content:space-around;padding:5px 0;padding-bottom:max(5px,env(safe-area-inset-bottom))}
+        .nav-item{display:flex;flex-direction:column;align-items:center;color:var(--gray);font-size:0.55rem;padding:3px 6px;cursor:pointer}
         .nav-item.active{color:var(--cyan)}
-        .nav-item .icon{font-size:1.1rem;margin-bottom:1px}
+        .nav-item .icon{font-size:1rem;margin-bottom:1px}
         .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--cyan);color:var(--white);padding:8px 16px;border-radius:16px;font-size:0.8rem;opacity:0;transition:opacity 0.3s;z-index:1000}
         .toast.show{opacity:1}.toast.error{border-color:var(--red)}.toast.success{border-color:var(--green)}
-        .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:none;justify-content:center;align-items:center;z-index:200}
+        .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:none;justify-content:center;align-items:center;z-index:200}
         .modal.show{display:flex}
-        .modal-content{background:var(--bg2);border-radius:12px;padding:16px;width:85%;max-width:320px}
+        .modal-content{background:var(--bg2);border-radius:12px;padding:16px;width:90%;max-width:350px;max-height:80vh;overflow-y:auto}
         .modal-title{font-size:1rem;margin-bottom:12px;text-align:center}
         .loading{text-align:center;padding:40px;color:var(--gray)}
         .spinner{width:36px;height:36px;border:3px solid var(--bg2);border-top-color:var(--cyan);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .refresh-time{text-align:center;color:var(--gray);font-size:0.65rem;margin-top:8px}
+        .refresh-time{text-align:center;color:var(--gray);font-size:0.6rem;margin-top:8px}
     </style>
 </head>
 <body>
     <header class="header">
         <h1>⚡ Neon Pulse</h1>
-        <div class="date" id="currentDate">載入中...</div>
-        <div class="streak" id="streakBadge">🔥 連續 0 天</div>
+        <div class="sub"><span class="date" id="currentDate">載入中...</span><span class="streak" id="streakBadge">🔥 0天</span></div>
     </header>
     <main class="container">
         <div id="loading" class="loading"><div class="spinner"></div><div>載入中...</div></div>
         <div id="content" style="display:none">
             <div class="tabs">
-                <div class="tab active" data-tab="home">📊 首頁</div>
-                <div class="tab" data-tab="record">✏️ 記錄</div>
-                <div class="tab" data-tab="settings">⚙️ 設定</div>
+                <div class="tab active" data-tab="home">📊首頁</div>
+                <div class="tab" data-tab="record">✏️記錄</div>
+                <div class="tab" data-tab="health">❤️健康</div>
+                <div class="tab" data-tab="achieve">🏆成就</div>
+                <div class="tab" data-tab="settings">⚙️設定</div>
             </div>
+            <!-- 首頁 -->
             <div id="tab-home" class="tab-content active">
                 <div class="stats-grid">
-                    <div class="stat-card water" onclick="quickLog('water')"><div class="icon">💧</div><div class="value" id="waterCount">0</div><div class="label">/ <span id="waterGoalText">8</span> 杯</div><div class="progress"><div class="progress-bar" id="waterProgress"></div></div></div>
-                    <div class="stat-card stand" onclick="quickLog('stand')"><div class="icon">🧍</div><div class="value" id="standCount">0</div><div class="label">/ <span id="standGoalText">6</span> 次</div><div class="progress"><div class="progress-bar" id="standProgress"></div></div></div>
-                    <div class="stat-card exercise" onclick="showModal('exerciseModal')"><div class="icon">🏃</div><div class="value" id="exerciseMinutes">0</div><div class="label">/ <span id="exerciseGoalText">30</span> 分鐘</div><div class="progress"><div class="progress-bar" id="exerciseProgress"></div></div></div>
-                    <div class="stat-card calories"><div class="icon">🔥</div><div class="value" id="caloriesBurned">0</div><div class="label">大卡</div></div>
+                    <div class="stat-card water" onclick="quickLog('water')"><div class="icon">💧</div><div class="value" id="waterCount">0</div><div class="label">/ <span id="waterGoal">8</span> 杯</div><div class="progress"><div class="progress-bar" id="waterProg"></div></div></div>
+                    <div class="stat-card stand" onclick="quickLog('stand')"><div class="icon">🧍</div><div class="value" id="standCount">0</div><div class="label">/ <span id="standGoal">6</span> 次</div><div class="progress"><div class="progress-bar" id="standProg"></div></div></div>
+                    <div class="stat-card exercise" onclick="showModal('exerciseModal')"><div class="icon">🏃</div><div class="value" id="exerciseMin">0</div><div class="label">/ <span id="exerciseGoal">30</span> 分鐘</div><div class="progress"><div class="progress-bar" id="exerciseProg"></div></div></div>
+                    <div class="stat-card calories"><div class="icon">🔥</div><div class="value" id="caloriesBurn">0</div><div class="label">大卡消耗</div></div>
                 </div>
                 <div class="actions">
-                    <button class="action-btn water" id="btnWater" onclick="quickLog('water')"><span class="icon">💧</span><span>喝水+1</span></button>
-                    <button class="action-btn stand" id="btnStand" onclick="quickLog('stand')"><span class="icon">🧍</span><span>起身+1</span></button>
-                    <button class="action-btn exercise" onclick="showModal('exerciseModal')"><span class="icon">🏃</span><span>運動</span></button>
+                    <button class="action-btn" onclick="quickLog('water')"><span class="icon">💧</span>喝水</button>
+                    <button class="action-btn" onclick="quickLog('stand')"><span class="icon">🧍</span>起身</button>
+                    <button class="action-btn" onclick="showModal('exerciseModal')"><span class="icon">🏃</span>運動</button>
+                    <button class="action-btn" onclick="showModal('moodModal')"><span class="icon">😊</span>心情</button>
                 </div>
-                <div class="section"><div class="section-title">📅 本週</div><div class="week-bars" id="weekBars"></div></div>
-                <div class="section">
-                    <div class="section-title">⚖️ 體重</div>
-                    <div class="weight-display"><span class="value" id="weightValue">--</span><span class="unit">kg</span></div>
-                    <div class="weight-changes">
-                        <div class="weight-change"><div class="label">週變化</div><div class="value" id="weightWeek">--</div></div>
-                        <div class="weight-change"><div class="label">月變化</div><div class="value" id="weightMonth">--</div></div>
-                    </div>
-                    <button class="btn btn-secondary" style="margin-top:10px" onclick="showModal('weightModal')">📝 記錄體重</button>
+                <div class="stats-grid three">
+                    <div class="stat-card sleep" onclick="showModal('sleepModal')"><div class="icon">😴</div><div class="value" id="sleepHrs">-</div><div class="label">小時</div></div>
+                    <div class="stat-card meal" onclick="showModal('mealModal')"><div class="icon">🍎</div><div class="value" id="mealCal">0</div><div class="label">卡攝入</div></div>
+                    <div class="stat-card mood"><div class="icon" id="moodEmoji">😊</div><div class="value" id="moodScore">-</div><div class="label">心情</div></div>
                 </div>
+                <div class="section"><div class="section-title">📅 本週統計</div><div class="week-bars" id="weekBars"></div></div>
+                <div class="section"><div class="section-title">⚖️ 體重 <span id="weightVal">--</span> kg</div><button class="btn btn-secondary" onclick="showModal('weightModal')">📝 記錄體重</button></div>
                 <div class="refresh-time" id="refreshTime">下拉刷新</div>
             </div>
+            <!-- 記錄 -->
             <div id="tab-record" class="tab-content">
-                <div class="section">
-                    <div class="section-title">✏️ 修改今日</div>
-                    <div class="form-group"><label class="form-label">💧 喝水杯數</label><div class="form-row"><input type="number" class="form-input" id="modifyWater" min="0"><button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="modifyCount('water')">改</button></div></div>
-                    <div class="form-group"><label class="form-label">🧍 起身次數</label><div class="form-row"><input type="number" class="form-input" id="modifyStand" min="0"><button class="btn btn-success" style="width:auto;padding:8px 16px" onclick="modifyCount('stand')">改</button></div></div>
+                <div class="section"><div class="section-title">😴 睡眠記錄</div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">時數</label><input type="number" class="form-input" id="sleepInput" step="0.5" placeholder="7.5"></div><div class="form-group"><label class="form-label">品質(1-5)</label><input type="number" class="form-input" id="sleepQuality" min="1" max="5" placeholder="4"></div></div>
+                    <button class="btn btn-purple" onclick="logSleep()">記錄睡眠</button>
                 </div>
-                <div class="section">
-                    <div class="section-title">🏃 記錄運動</div>
-                    <div class="form-group"><label class="form-label">類型</label><select class="form-input" id="exerciseType"><option value="跑步">🏃跑步</option><option value="走路">🚶走路</option><option value="游泳">🏊游泳</option><option value="騎車">🚴騎車</option><option value="重訓">🏋️重訓</option><option value="瑜伽">🧘瑜伽</option><option value="其他">⭐其他</option></select></div>
-                    <div class="form-group"><label class="form-label">時間(分鐘)</label><input type="number" class="form-input" id="exerciseDuration" value="30"></div>
+                <div class="section"><div class="section-title">🍎 飲食記錄</div>
+                    <div class="form-group"><label class="form-label">餐別</label><select class="form-input" id="mealType"><option value="早餐">🌅早餐</option><option value="午餐">☀️午餐</option><option value="晚餐">🌙晚餐</option><option value="點心">🍪點心</option></select></div>
+                    <div class="form-group"><label class="form-label">食物（逗號分隔）</label><input type="text" class="form-input" id="mealFoods" placeholder="麵包、豆漿"></div>
+                    <div class="form-group"><label class="form-label">熱量（選填）</label><input type="number" class="form-input" id="mealCalInput" placeholder="自動計算"></div>
+                    <button class="btn btn-gold" onclick="logMeal()">記錄飲食</button>
+                </div>
+                <div class="section"><div class="section-title">🏃 運動記錄</div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">類型</label><select class="form-input" id="exType"><option value="跑步">🏃跑步</option><option value="走路">🚶走路</option><option value="游泳">🏊游泳</option><option value="騎車">🚴騎車</option><option value="重訓">🏋️重訓</option><option value="瑜伽">🧘瑜伽</option><option value="其他">⭐其他</option></select></div><div class="form-group"><label class="form-label">分鐘</label><input type="number" class="form-input" id="exDuration" value="30"></div></div>
                     <button class="btn btn-warning" onclick="logExercise()">記錄運動</button>
                 </div>
-                <div class="section">
-                    <div class="section-title">⚖️ 體重</div>
-                    <div class="form-group"><label class="form-label">體重(kg)</label><input type="number" class="form-input" id="weightInput" step="0.1" placeholder="65.5"></div>
-                    <button class="btn btn-secondary" onclick="logWeight()">記錄體重</button>
+                <div class="section"><div class="section-title">✏️ 修改今日</div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">💧喝水</label><input type="number" class="form-input" id="modWater" min="0"></div><div class="form-group"><label class="form-label">🧍起身</label><input type="number" class="form-input" id="modStand" min="0"></div></div>
+                    <div class="form-row"><button class="btn btn-primary" onclick="modifyCount('water')">改喝水</button><button class="btn btn-success" onclick="modifyCount('stand')">改起身</button></div>
                 </div>
             </div>
+            <!-- 健康 -->
+            <div id="tab-health" class="tab-content">
+                <div class="section"><div class="section-title">😊 記錄心情</div>
+                    <div class="mood-grid" id="moodGrid"><div class="mood-btn" data-mood="😄" onclick="selectMood('😄')">😄</div><div class="mood-btn" data-mood="🙂" onclick="selectMood('🙂')">🙂</div><div class="mood-btn" data-mood="😐" onclick="selectMood('😐')">😐</div><div class="mood-btn" data-mood="😔" onclick="selectMood('😔')">😔</div><div class="mood-btn" data-mood="😢" onclick="selectMood('😢')">😢</div><div class="mood-btn" data-mood="😡" onclick="selectMood('😡')">😡</div><div class="mood-btn" data-mood="😰" onclick="selectMood('😰')">😰</div><div class="mood-btn" data-mood="😴" onclick="selectMood('😴')">😴</div></div>
+                    <div class="form-group" style="margin-top:10px"><input type="text" class="form-input" id="moodNote" placeholder="備註"></div>
+                    <button class="btn btn-pink" onclick="logMood()">記錄心情</button>
+                </div>
+                <div class="section"><div class="section-title">😴 睡眠統計</div><div id="sleepStats">載入中...</div></div>
+                <div class="section"><div class="section-title">🍎 今日飲食</div><div id="mealList">載入中...</div></div>
+                <div class="section"><div class="section-title">😊 心情統計</div><div id="moodStats">載入中...</div></div>
+            </div>
+            <!-- 成就 -->
+            <div id="tab-achieve" class="tab-content">
+                <div class="section"><div class="section-title">🏆 已解鎖 <span id="achieveCount">0/0</span></div><div id="achieveList"></div></div>
+                <div class="section"><div class="section-title">📊 累計統計</div><div id="totalStats"></div></div>
+            </div>
+            <!-- 設定 -->
             <div id="tab-settings" class="tab-content">
-                <div class="section">
-                    <div class="section-title">🎯 每日目標</div>
-                    <div class="form-group"><label class="form-label">💧 喝水(杯)</label><input type="number" class="form-input" id="goalWater" min="1" max="20"></div>
-                    <div class="form-group"><label class="form-label">🧍 起身(次)</label><input type="number" class="form-input" id="goalStand" min="1" max="20"></div>
-                    <div class="form-group"><label class="form-label">🏃 運動(分鐘)</label><input type="number" class="form-input" id="goalExercise" min="1" max="180"></div>
+                <div class="section"><div class="section-title">🎯 每日目標</div>
+                    <div class="form-group"><label class="form-label">💧 喝水（杯）</label><input type="number" class="form-input" id="setWaterGoal" min="1" max="20"></div>
+                    <div class="form-group"><label class="form-label">🧍 起身（次）</label><input type="number" class="form-input" id="setStandGoal" min="1" max="20"></div>
+                    <div class="form-group"><label class="form-label">🏃 運動（分鐘）</label><input type="number" class="form-input" id="setExGoal" min="1" max="180"></div>
                     <button class="btn btn-primary" onclick="saveGoals()">儲存目標</button>
                 </div>
-                <div class="section">
-                    <div class="section-title">⏰ 提醒設定</div>
+                <div class="section"><div class="section-title">⏰ 提醒設定</div>
                     <div class="toggle-row"><span>提醒功能</span><div class="toggle" id="toggleEnabled" onclick="toggleEnabled()"></div></div>
-                    <div class="form-group" style="margin-top:10px"><label class="form-label">💧 喝水間隔(分)</label><input type="number" class="form-input" id="settingWaterInterval" min="10" max="180"></div>
-                    <div class="form-group"><label class="form-label">🧍 久坐間隔(分)</label><input type="number" class="form-input" id="settingStandInterval" min="10" max="120"></div>
-                    <div class="form-row">
-                        <div class="form-group"><label class="form-label">🌙 勿擾開始</label><input type="time" class="form-input" id="settingDndStart"></div>
-                        <div class="form-group"><label class="form-label">🌙 勿擾結束</label><input type="time" class="form-input" id="settingDndEnd"></div>
-                    </div>
+                    <div class="form-group" style="margin-top:10px"><label class="form-label">💧 喝水間隔（分）</label><input type="number" class="form-input" id="setWaterInt" min="10" max="180"></div>
+                    <div class="form-group"><label class="form-label">🧍 起身間隔（分）</label><input type="number" class="form-input" id="setStandInt" min="10" max="120"></div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">🌙 勿擾開始</label><input type="time" class="form-input" id="setDndStart"></div><div class="form-group"><label class="form-label">🌙 勿擾結束</label><input type="time" class="form-input" id="setDndEnd"></div></div>
                     <button class="btn btn-secondary" onclick="saveSettings()">儲存設定</button>
                 </div>
             </div>
@@ -162,35 +182,42 @@
     <nav class="bottom-nav">
         <div class="nav-item active" data-tab="home"><span class="icon">📊</span>首頁</div>
         <div class="nav-item" data-tab="record"><span class="icon">✏️</span>記錄</div>
+        <div class="nav-item" data-tab="health"><span class="icon">❤️</span>健康</div>
+        <div class="nav-item" data-tab="achieve"><span class="icon">🏆</span>成就</div>
         <div class="nav-item" data-tab="settings"><span class="icon">⚙️</span>設定</div>
-        <div class="nav-item" onclick="loadData()"><span class="icon">🔄</span>刷新</div>
     </nav>
-    <div class="modal" id="exerciseModal"><div class="modal-content"><div class="modal-title">🏃 記錄運動</div><div class="form-group"><select class="form-input" id="qExType"><option value="跑步">🏃跑步</option><option value="走路">🚶走路</option><option value="游泳">🏊游泳</option><option value="騎車">🚴騎車</option><option value="重訓">🏋️重訓</option><option value="瑜伽">🧘瑜伽</option><option value="其他">⭐其他</option></select></div><div class="form-group"><input type="number" class="form-input" id="qExDur" value="30" placeholder="分鐘"></div><div class="form-row"><button class="btn btn-secondary" onclick="closeModal('exerciseModal')">取消</button><button class="btn btn-warning" onclick="qLogExercise()">記錄</button></div></div></div>
+    <!-- Modals -->
+    <div class="modal" id="exerciseModal"><div class="modal-content"><div class="modal-title">🏃 快速運動</div><div class="form-group"><select class="form-input" id="qExType"><option value="跑步">🏃跑步</option><option value="走路">🚶走路</option><option value="重訓">🏋️重訓</option><option value="其他">⭐其他</option></select></div><div class="form-group"><input type="number" class="form-input" id="qExDur" value="30" placeholder="分鐘"></div><div class="form-row"><button class="btn btn-secondary" onclick="closeModal('exerciseModal')">取消</button><button class="btn btn-warning" onclick="qLogExercise()">記錄</button></div></div></div>
+    <div class="modal" id="moodModal"><div class="modal-content"><div class="modal-title">😊 快速心情</div><div class="mood-grid"><div class="mood-btn" onclick="qLogMood('😄')">😄</div><div class="mood-btn" onclick="qLogMood('🙂')">🙂</div><div class="mood-btn" onclick="qLogMood('😐')">😐</div><div class="mood-btn" onclick="qLogMood('😔')">😔</div></div><button class="btn btn-secondary" style="margin-top:10px" onclick="closeModal('moodModal')">取消</button></div></div>
+    <div class="modal" id="sleepModal"><div class="modal-content"><div class="modal-title">😴 快速睡眠</div><div class="form-row"><div class="form-group"><label class="form-label">時數</label><input type="number" class="form-input" id="qSleepH" step="0.5" placeholder="7.5"></div><div class="form-group"><label class="form-label">品質</label><input type="number" class="form-input" id="qSleepQ" min="1" max="5" placeholder="4"></div></div><div class="form-row"><button class="btn btn-secondary" onclick="closeModal('sleepModal')">取消</button><button class="btn btn-purple" onclick="qLogSleep()">記錄</button></div></div></div>
+    <div class="modal" id="mealModal"><div class="modal-content"><div class="modal-title">🍎 快速飲食</div><div class="form-group"><select class="form-input" id="qMealType"><option value="早餐">🌅早餐</option><option value="午餐">☀️午餐</option><option value="晚餐">🌙晚餐</option><option value="點心">🍪點心</option></select></div><div class="form-group"><input type="text" class="form-input" id="qMealFoods" placeholder="食物"></div><div class="form-row"><button class="btn btn-secondary" onclick="closeModal('mealModal')">取消</button><button class="btn btn-gold" onclick="qLogMeal()">記錄</button></div></div></div>
     <div class="modal" id="weightModal"><div class="modal-content"><div class="modal-title">⚖️ 記錄體重</div><div class="form-group"><input type="number" class="form-input" id="qWeight" step="0.1" placeholder="kg"></div><div class="form-row"><button class="btn btn-secondary" onclick="closeModal('weightModal')">取消</button><button class="btn btn-primary" onclick="qLogWeight()">記錄</button></div></div></div>
     <div class="toast" id="toast"></div>
     <script>
-        const API='';let goals={water:8,stand:6,exercise:30},settings={},loading=false;
-        document.querySelectorAll('.tab,.nav-item[data-tab]').forEach(e=>e.addEventListener('click',()=>{const t=e.dataset.tab;if(!t)return;document.querySelectorAll('.tab,.nav-item').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));document.querySelectorAll(`[data-tab="${t}"]`).forEach(x=>x.classList.add('active'));document.getElementById(`tab-${t}`).classList.add('active')}));
-        async function loadData(){if(loading)return;loading=true;try{const[a,b,c,d,e,f]=await Promise.all([fetch(`${API}/api/today`),fetch(`${API}/api/week`),fetch(`${API}/api/weight`),fetch(`${API}/api/streak`),fetch(`${API}/api/goals`),fetch(`${API}/api/settings`)]);const today=await a.json(),week=await b.json(),weight=await c.json(),streak=await d.json();goals=await e.json();settings=await f.json();updateUI(today,week,weight,streak);updateSettingsUI();document.getElementById('loading').style.display='none';document.getElementById('content').style.display='block'}catch(e){console.error(e);showToast('載入失敗','error')}loading=false}
-        function updateUI(t,w,wt,s){const now=new Date();document.getElementById('currentDate').textContent=`${now.getMonth()+1}/${now.getDate()} ${['日','一','二','三','四','五','六'][now.getDay()]}`;document.getElementById('streakBadge').textContent=`🔥 連續 ${s.streak||0} 天`;const wc=t.water_count||0,sc=t.stand_count||0,em=t.exercise_minutes||0,ec=t.exercise_calories||0;document.getElementById('waterCount').textContent=wc;document.getElementById('standCount').textContent=sc;document.getElementById('exerciseMinutes').textContent=em;document.getElementById('caloriesBurned').textContent=ec;document.getElementById('waterGoalText').textContent=goals.water;document.getElementById('standGoalText').textContent=goals.stand;document.getElementById('exerciseGoalText').textContent=goals.exercise;document.getElementById('waterProgress').style.width=Math.min(wc/goals.water*100,100)+'%';document.getElementById('standProgress').style.width=Math.min(sc/goals.stand*100,100)+'%';document.getElementById('exerciseProgress').style.width=Math.min(em/goals.exercise*100,100)+'%';document.getElementById('modifyWater').value=wc;document.getElementById('modifyStand').value=sc;renderWeek(w);if(wt&&wt.current){document.getElementById('weightValue').textContent=wt.current;const ww=wt.week_change,wm=wt.month_change;if(ww!=null){document.getElementById('weightWeek').textContent=ww>0?`+${ww}`:ww;document.getElementById('weightWeek').className='value '+(ww>0?'up':ww<0?'down':'')}if(wm!=null){document.getElementById('weightMonth').textContent=wm>0?`+${wm}`:wm;document.getElementById('weightMonth').className='value '+(wm>0?'up':wm<0?'down':'')}}document.getElementById('refreshTime').textContent=`更新：${now.toLocaleTimeString('zh-TW')}`}
-        function updateSettingsUI(){document.getElementById('goalWater').value=goals.water;document.getElementById('goalStand').value=goals.stand;document.getElementById('goalExercise').value=goals.exercise;document.getElementById('settingWaterInterval').value=settings.water_interval||60;document.getElementById('settingStandInterval').value=settings.stand_interval||45;document.getElementById('settingDndStart').value=settings.dnd_start||'22:00';document.getElementById('settingDndEnd').value=settings.dnd_end||'08:00';document.getElementById('toggleEnabled').classList.toggle('on',settings.enabled==='TRUE'||settings.enabled===true)}
-        function renderWeek(w){let h='';(w||[]).forEach(d=>{const wh=Math.min((d.water||0)/goals.water*40,40),sh=Math.min((d.stand||0)/goals.stand*40,40),eh=Math.min((d.exercise||0)/goals.exercise*40,40);h+=`<div class="day-bar"><div class="bars"><div class="bar water" style="height:${wh}px"></div><div class="bar stand" style="height:${sh}px"></div><div class="bar exercise" style="height:${eh}px"></div></div><div class="weekday">${d.weekday}</div></div>`});document.getElementById('weekBars').innerHTML=h}
-        async function quickLog(type){const btn=document.getElementById(`btn${type.charAt(0).toUpperCase()+type.slice(1)}`);if(btn)btn.disabled=true;try{const r=await fetch(`${API}/api/log/${type}`,{method:'POST'});const d=await r.json();if(d.success){showToast(d.message,'success');loadData()}else{showToast(d.error||'失敗','error')}}catch(e){showToast('網路錯誤','error')}if(btn)setTimeout(()=>btn.disabled=false,1000)}
-        async function logExercise(){const type=document.getElementById('exerciseType').value,dur=parseInt(document.getElementById('exerciseDuration').value)||30;try{const r=await fetch(`${API}/api/log/exercise`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,duration:dur})});const d=await r.json();if(d.success){showToast(d.message,'success');loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function qLogExercise(){const type=document.getElementById('qExType').value,dur=parseInt(document.getElementById('qExDur').value)||30;try{const r=await fetch(`${API}/api/log/exercise`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,duration:dur})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('exerciseModal');loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function logWeight(){const w=parseFloat(document.getElementById('weightInput').value);if(!w||w<=0){showToast('請輸入體重','error');return}try{const r=await fetch(`${API}/api/log/weight`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({weight:w})});const d=await r.json();if(d.success){showToast(d.message,'success');document.getElementById('weightInput').value='';loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function qLogWeight(){const w=parseFloat(document.getElementById('qWeight').value);if(!w||w<=0){showToast('請輸入體重','error');return}try{const r=await fetch(`${API}/api/log/weight`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({weight:w})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('weightModal');loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function modifyCount(type){const v=parseInt(document.getElementById(`modify${type.charAt(0).toUpperCase()+type.slice(1)}`).value)||0;try{const r=await fetch(`${API}/api/modify/${type}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:v})});const d=await r.json();if(d.success){showToast(d.message,'success');loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function saveGoals(){const w=parseInt(document.getElementById('goalWater').value),s=parseInt(document.getElementById('goalStand').value),e=parseInt(document.getElementById('goalExercise').value);try{const r=await fetch(`${API}/api/update/goals`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({water:w,stand:s,exercise:e})});const d=await r.json();if(d.success){showToast('目標已儲存','success');loadData()}else{showToast(d.error,'error')}}catch(e){showToast('網路錯誤','error')}}
-        async function saveSettings(){const wi=parseInt(document.getElementById('settingWaterInterval').value),si=parseInt(document.getElementById('settingStandInterval').value),ds=document.getElementById('settingDndStart').value,de=document.getElementById('settingDndEnd').value;try{await fetch(`${API}/api/update/settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({water_interval:wi,stand_interval:si,dnd_start:ds,dnd_end:de})});showToast('設定已儲存','success');loadData()}catch(e){showToast('網路錯誤','error')}}
-        async function toggleEnabled(){const t=document.getElementById('toggleEnabled'),v=!t.classList.contains('on');t.classList.toggle('on',v);try{await fetch(`${API}/api/update/settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:v})});showToast(v?'提醒開啟':'提醒關閉','success')}catch(e){showToast('錯誤','error')}}
-        function showModal(id){document.getElementById(id).classList.add('show')}
-        function closeModal(id){document.getElementById(id).classList.remove('show')}
-        function showToast(m,t=''){const e=document.getElementById('toast');e.textContent=m;e.className='toast show '+t;setTimeout(()=>e.classList.remove('show'),2500)}
-        document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')}));
-        let sy=0;document.addEventListener('touchstart',e=>sy=e.touches[0].pageY);document.addEventListener('touchend',e=>{if(window.scrollY===0&&e.changedTouches[0].pageY-sy>80)loadData()});
-        loadData();setInterval(loadData,120000);
-        if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+        const API='';let goals={water:8,stand:6,exercise:30},settings={},selectedMood='😊';
+        document.querySelectorAll('.tab,.nav-item[data-tab]').forEach(e=>e.addEventListener('click',()=>{const t=e.dataset.tab;if(!t)return;document.querySelectorAll('.tab,.nav-item').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));document.querySelectorAll(`[data-tab="${t}"]`).forEach(x=>x.classList.add('active'));document.getElementById(`tab-${t}`).classList.add('active');}));
+        async function loadData(){try{const[today,week,weight,streak,goalsR,settingsR,sleep,meal,mood,achieve]=await Promise.all([fetch(`${API}/api/today`).then(r=>r.json()).catch(()=>({})),fetch(`${API}/api/week`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/api/weight`).then(r=>r.json()).catch(()=>({})),fetch(`${API}/api/streak`).then(r=>r.json()).catch(()=>({streak:0})),fetch(`${API}/api/goals`).then(r=>r.json()).catch(()=>({water:8,stand:6,exercise:30})),fetch(`${API}/api/settings`).then(r=>r.json()).catch(()=>({})),fetch(`${API}/api/sleep`).then(r=>r.json()).catch(()=>({})),fetch(`${API}/api/meal`).then(r=>r.json()).catch(()=>({meals:[],total_calories:0})),fetch(`${API}/api/mood`).then(r=>r.json()).catch(()=>({})),fetch(`${API}/api/achievements`).then(r=>r.json()).catch(()=>({unlocked:[],stats:{}}))]);goals=goalsR;settings=settingsR;updateUI(today,week,weight,streak,sleep,meal,mood,achieve);document.getElementById('loading').style.display='none';document.getElementById('content').style.display='block';}catch(e){console.error(e);showToast('載入失敗','error');}}
+        function updateUI(t,w,wt,s,sl,ml,md,ach){const now=new Date();document.getElementById('currentDate').textContent=`${now.getMonth()+1}/${now.getDate()} ${['日','一','二','三','四','五','六'][now.getDay()]}`;document.getElementById('streakBadge').textContent=`🔥 ${s.streak||0}天`;const wc=t.water_count||0,sc=t.stand_count||0,em=t.exercise_minutes||0,ec=t.exercise_calories||0;document.getElementById('waterCount').textContent=wc;document.getElementById('standCount').textContent=sc;document.getElementById('exerciseMin').textContent=em;document.getElementById('caloriesBurn').textContent=ec;document.getElementById('waterGoal').textContent=goals.water;document.getElementById('standGoal').textContent=goals.stand;document.getElementById('exerciseGoal').textContent=goals.exercise;document.getElementById('waterProg').style.width=Math.min(wc/goals.water*100,100)+'%';document.getElementById('standProg').style.width=Math.min(sc/goals.stand*100,100)+'%';document.getElementById('exerciseProg').style.width=Math.min(em/goals.exercise*100,100)+'%';document.getElementById('modWater').value=wc;document.getElementById('modStand').value=sc;document.getElementById('sleepHrs').textContent=sl.avg_hours||'-';document.getElementById('mealCal').textContent=ml.total_calories||0;if(md.latest){document.getElementById('moodEmoji').textContent=md.latest.emoji;document.getElementById('moodScore').textContent=md.latest.score+'/5';}if(wt&&wt.current)document.getElementById('weightVal').textContent=wt.current;renderWeek(w);document.getElementById('setWaterGoal').value=goals.water;document.getElementById('setStandGoal').value=goals.stand;document.getElementById('setExGoal').value=goals.exercise;document.getElementById('setWaterInt').value=settings.water_interval||60;document.getElementById('setStandInt').value=settings.stand_interval||45;document.getElementById('setDndStart').value=settings.dnd_start||'22:00';document.getElementById('setDndEnd').value=settings.dnd_end||'06:00';document.getElementById('toggleEnabled').classList.toggle('on',settings.enabled==='TRUE'||settings.enabled===true);if(sl.avg_hours){document.getElementById('sleepStats').innerHTML=`⏰ 平均 ${sl.avg_hours} 小時 | ⭐ 品質 ${sl.avg_quality}/5`;}else{document.getElementById('sleepStats').textContent='尚無記錄';}if(ml.meals&&ml.meals.length){document.getElementById('mealList').innerHTML=ml.meals.map(m=>`<div class="meal-item"><span>${m.type}: ${m.foods}</span><span style="color:var(--gold)">${m.calories}卡</span></div>`).join('')+`<div style="text-align:right;margin-top:8px;color:var(--gold)">總計：${ml.total_calories} 大卡</div>`;}else{document.getElementById('mealList').textContent='尚無記錄';}if(md.avg_score){document.getElementById('moodStats').innerHTML=`⭐ 平均 ${md.avg_score}/5 | 📊 ${md.records||0} 筆`;}else{document.getElementById('moodStats').textContent='尚無記錄';}document.getElementById('achieveCount').textContent=`${ach.unlocked_count||0}/${ach.total||0}`;if(ach.unlocked&&ach.unlocked.length){document.getElementById('achieveList').innerHTML=ach.unlocked.map(a=>`<span class="badge">${a.name}</span>`).join('');}else{document.getElementById('achieveList').innerHTML='<div style="color:var(--gray)">尚未解鎖，繼續努力！</div>';}const st=ach.stats||{};document.getElementById('totalStats').innerHTML=`💧 ${st.total_water||0} 杯 | 🧍 ${st.total_stand||0} 次 | 🏃 ${st.total_exercise||0} 分鐘<br>🔥 連續 ${st.streak||0} 天`;document.getElementById('refreshTime').textContent=`更新：${now.toLocaleTimeString('zh-TW')}`;}
+        function renderWeek(w){let h='';(w||[]).forEach(d=>{const wh=Math.min((d.water||0)/goals.water*35,35),sh=Math.min((d.stand||0)/goals.stand*35,35),eh=Math.min((d.exercise||0)/goals.exercise*35,35);h+=`<div class="day-bar"><div class="bars"><div class="bar water" style="height:${wh}px"></div><div class="bar stand" style="height:${sh}px"></div><div class="bar exercise" style="height:${eh}px"></div></div><div class="weekday">${d.weekday}</div></div>`;});document.getElementById('weekBars').innerHTML=h;}
+        async function quickLog(type){try{const r=await fetch(`${API}/api/log/${type}`,{method:'POST'});const d=await r.json();if(d.success){showToast(d.message,'success');loadData();}else{showToast(d.error||'失敗','error');}}catch(e){showToast('網路錯誤','error');}}
+        async function logExercise(){const type=document.getElementById('exType').value,dur=parseInt(document.getElementById('exDuration').value)||30;try{const r=await fetch(`${API}/api/log/exercise`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,duration:dur})});const d=await r.json();if(d.success){showToast(d.message,'success');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function qLogExercise(){const type=document.getElementById('qExType').value,dur=parseInt(document.getElementById('qExDur').value)||30;try{const r=await fetch(`${API}/api/log/exercise`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,duration:dur})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('exerciseModal');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function logSleep(){const h=parseFloat(document.getElementById('sleepInput').value),q=parseInt(document.getElementById('sleepQuality').value);if(!h||!q){showToast('請輸入時數和品質','error');return;}try{const r=await fetch(`${API}/api/log/sleep`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hours:h,quality:q})});const d=await r.json();if(d.success){showToast(d.message,'success');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function qLogSleep(){const h=parseFloat(document.getElementById('qSleepH').value),q=parseInt(document.getElementById('qSleepQ').value);if(!h||!q){showToast('請輸入時數和品質','error');return;}try{const r=await fetch(`${API}/api/log/sleep`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hours:h,quality:q})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('sleepModal');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function logMeal(){const type=document.getElementById('mealType').value,foods=document.getElementById('mealFoods').value,cal=parseInt(document.getElementById('mealCalInput').value)||0;if(!foods){showToast('請輸入食物','error');return;}try{const r=await fetch(`${API}/api/log/meal`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,foods,calories:cal})});const d=await r.json();if(d.success){showToast(d.message,'success');document.getElementById('mealFoods').value='';loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function qLogMeal(){const type=document.getElementById('qMealType').value,foods=document.getElementById('qMealFoods').value;if(!foods){showToast('請輸入食物','error');return;}try{const r=await fetch(`${API}/api/log/meal`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,foods,calories:0})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('mealModal');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        function selectMood(m){selectedMood=m;document.querySelectorAll('#tab-health .mood-btn').forEach(b=>b.classList.toggle('selected',b.dataset.mood===m));}
+        async function logMood(){const note=document.getElementById('moodNote').value;try{const r=await fetch(`${API}/api/log/mood`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:selectedMood,note})});const d=await r.json();if(d.success){showToast(d.message,'success');document.getElementById('moodNote').value='';loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function qLogMood(m){try{const r=await fetch(`${API}/api/log/mood`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:m,note:''})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('moodModal');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function qLogWeight(){const w=parseFloat(document.getElementById('qWeight').value);if(!w){showToast('請輸入體重','error');return;}try{const r=await fetch(`${API}/api/log/weight`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({weight:w})});const d=await r.json();if(d.success){showToast(d.message,'success');closeModal('weightModal');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function modifyCount(type){const v=parseInt(document.getElementById(`mod${type.charAt(0).toUpperCase()+type.slice(1)}`).value)||0;try{const r=await fetch(`${API}/api/modify/${type}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:v})});const d=await r.json();if(d.success){showToast(d.message,'success');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function saveGoals(){const w=parseInt(document.getElementById('setWaterGoal').value),s=parseInt(document.getElementById('setStandGoal').value),e=parseInt(document.getElementById('setExGoal').value);try{const r=await fetch(`${API}/api/update/goals`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({water:w,stand:s,exercise:e})});const d=await r.json();if(d.success){showToast('目標已儲存','success');loadData();}else{showToast(d.error,'error');}}catch(e){showToast('網路錯誤','error');}}
+        async function saveSettings(){const wi=parseInt(document.getElementById('setWaterInt').value),si=parseInt(document.getElementById('setStandInt').value),ds=document.getElementById('setDndStart').value,de=document.getElementById('setDndEnd').value;try{await fetch(`${API}/api/update/settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({water_interval:wi,stand_interval:si,dnd_start:ds,dnd_end:de})});showToast('設定已儲存','success');loadData();}catch(e){showToast('網路錯誤','error');}}
+        async function toggleEnabled(){const t=document.getElementById('toggleEnabled'),v=!t.classList.contains('on');t.classList.toggle('on',v);try{await fetch(`${API}/api/update/settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:v})});showToast(v?'提醒開啟':'提醒關閉','success');}catch(e){showToast('錯誤','error');}}
+        function showModal(id){document.getElementById(id).classList.add('show');}function closeModal(id){document.getElementById(id).classList.remove('show');}function showToast(m,t=''){const e=document.getElementById('toast');e.textContent=m;e.className='toast show '+t;setTimeout(()=>e.classList.remove('show'),2500);}
+        document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+        let sy=0;document.addEventListener('touchstart',e=>sy=e.touches[0].pageY);document.addEventListener('touchend',e=>{if(window.scrollY===0&&e.changedTouches[0].pageY-sy>80)loadData();});
+        loadData();setInterval(loadData,180000);
     </script>
 </body>
 </html>
