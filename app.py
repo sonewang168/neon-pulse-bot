@@ -750,19 +750,28 @@ def write_exercise(ex_type, duration):
     return cal
 
 def write_setting(key, value):
-    sheet = get_sheet('settings')
-    headers = sheet.row_values(1)
-    if key in headers:
-        sheet.update_cell(2, headers.index(key) + 1, value)
-        clear_cache()  # 清除所有快取
-        return True
-    else:
-        # 欄位不存在，新增欄位
-        new_col = len(headers) + 1
-        sheet.update_cell(1, new_col, key)
-        sheet.update_cell(2, new_col, value)
-        clear_cache()
-        return True
+    try:
+        sheet = get_sheet('settings')
+        headers = sheet.row_values(1)
+        print(f"[Settings] 設定 {key} = {value}, 現有欄位: {headers}")
+        
+        if key in headers:
+            col = headers.index(key) + 1
+            sheet.update_cell(2, col, value)
+            print(f"[Settings] 更新欄位 {key} 在第 {col} 欄")
+            clear_cache()
+            return True
+        else:
+            # 欄位不存在，新增欄位
+            new_col = len(headers) + 1
+            sheet.update_cell(1, new_col, key)
+            sheet.update_cell(2, new_col, value)
+            print(f"[Settings] 新增欄位 {key} 在第 {new_col} 欄")
+            clear_cache()
+            return True
+    except Exception as e:
+        print(f"[Settings] 錯誤: {e}")
+        return False
 
 def set_count(log_type, target):
     today = get_today()
@@ -1296,7 +1305,7 @@ def flex_settings(s):
             {"type": "box", "layout": "vertical", "margin": "sm", "spacing": "sm", "contents": [
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "提醒狀態", "color": COLORS['gray'], "flex": 2}, {"type": "text", "text": st, "color": COLORS['white'], "align": "end", "flex": 1}]},
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "💧 喝水間隔", "color": COLORS['cyan'], "flex": 2}, {"type": "text", "text": f"{s.get('water_interval', 60)} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]},
-                {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🧍 久坐間隔", "color": COLORS['green'], "flex": 2}, {"type": "text", "text": f"{s.get('stand_interval', 45)} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]},
+                {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🧍 起身間隔", "color": COLORS['green'], "flex": 2}, {"type": "text", "text": f"{s.get('stand_interval', 45)} 分鐘", "color": COLORS['white'], "align": "end", "flex": 1}]},
                 {"type": "box", "layout": "horizontal", "contents": [{"type": "text", "text": "🌙 勿擾時段", "color": COLORS['pink'], "flex": 2}, {"type": "text", "text": f"{s.get('dnd_start', '22:00')}-{s.get('dnd_end', '08:00')}", "color": COLORS['white'], "align": "end", "flex": 1}]}]}]}}
 
 def flex_ex_prompt():
@@ -1471,13 +1480,13 @@ def handle_message(event):
                 else:
                     msgs.append(TextMessage(text="格式：喝水間隔 數字", quick_reply=qr(QR_MAIN)))
             
-            elif text.startswith('久坐間隔'):
+            elif text.startswith('起身間隔') or text.startswith('久坐間隔'):
                 p = text.split()
                 if len(p) >= 2 and p[1].isdigit():
                     write_setting('stand_interval', int(p[1]))
-                    msgs.append(TextMessage(text=f"✅ 久坐間隔設為 {p[1]} 分鐘", quick_reply=qr(QR_MAIN)))
+                    msgs.append(TextMessage(text=f"✅ 起身間隔設為 {p[1]} 分鐘", quick_reply=qr(QR_MAIN)))
                 else:
-                    msgs.append(TextMessage(text="格式：久坐間隔 數字", quick_reply=qr(QR_MAIN)))
+                    msgs.append(TextMessage(text="格式：起身間隔 數字\n例如：起身間隔 45", quick_reply=qr(QR_MAIN)))
             
             elif text.startswith('勿擾'):
                 # 用正則提取時間 (支援 6:00 或 06:00 格式)
@@ -2011,7 +2020,7 @@ def api_update_settings():
             val = int(data['stand_interval'])
             if 10 <= val <= 120:
                 write_setting('stand_interval', val)
-                updated.append(f'久坐間隔 {val} 分鐘')
+                updated.append(f'起身間隔 {val} 分鐘')
         
         if 'enabled' in data:
             val = 'TRUE' if data['enabled'] else 'FALSE'
