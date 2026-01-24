@@ -1586,7 +1586,7 @@ def handle_message(event):
             elif text == '護眼完成' or text == '已護眼':
                 write_eye('completed')
                 eye_stats = get_eye_stats()
-                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 20-20-20 護眼習慣！", quick_reply=qr(QR_EYE)))
+                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 30-20-20 護眼習慣！", quick_reply=qr(QR_EYE)))
             
             elif text == '護眼忽略':
                 write_eye('ignored')
