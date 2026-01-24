@@ -749,6 +749,39 @@ def write_exercise(ex_type, duration):
     clear_cache('today')  # 清除快取
     return cal
 
+# ===== 護眼記錄 =====
+def write_eye(status):
+    """記錄護眼（completed=已護眼, ignored=忽略）"""
+    sheet = get_or_create_sheet('eye_log', ['時間', '狀態'])
+    sheet.append_row([get_now(), status])
+    clear_cache()
+
+def get_eye_stats():
+    """取得今日護眼統計"""
+    try:
+        sheet = get_sheet('eye_log')
+        data = sheet.get_all_values()[1:]
+    except:
+        return {'completed': 0, 'ignored': 0, 'total': 0}
+    
+    today = get_today()
+    completed = 0
+    ignored = 0
+    
+    for row in data:
+        if row and row[0].startswith(today):
+            if len(row) > 1:
+                if row[1] == 'completed':
+                    completed += 1
+                elif row[1] == 'ignored':
+                    ignored += 1
+    
+    return {
+        'completed': completed,
+        'ignored': ignored,
+        'total': completed + ignored
+    }
+
 def write_setting(key, value):
     try:
         sheet = get_sheet('settings')
@@ -1039,6 +1072,11 @@ def flex_stats(s, streak=0, goals=None):
     exercise_calories = s.get('exercise_calories', 0) or 0
     date_str = s.get('date', '今日') or '今日'
     
+    # 取得護眼統計
+    eye_stats = get_eye_stats()
+    eye_completed = eye_stats.get('completed', 0)
+    eye_ignored = eye_stats.get('ignored', 0)
+    
     wg, sg, eg = goals['water'], goals['stand'], goals['exercise']
     wp = min(water_count/wg*100, 100) if wg > 0 else 0
     sp = min(stand_count/sg*100, 100) if sg > 0 else 0
@@ -1074,7 +1112,10 @@ def flex_stats(s, streak=0, goals=None):
             {"type": "separator", "margin": "lg", "color": "#333355"},
             {"type": "box", "layout": "horizontal", "margin": "lg", "contents": [
                 {"type": "text", "text": "🔥 消耗熱量", "color": COLORS['gray']},
-                {"type": "text", "text": f"{exercise_calories} kcal", "color": COLORS['pink'], "size": "lg", "weight": "bold", "align": "end"}]}]}}
+                {"type": "text", "text": f"{exercise_calories} kcal", "color": COLORS['pink'], "size": "lg", "weight": "bold", "align": "end"}]},
+            {"type": "box", "layout": "horizontal", "margin": "md", "contents": [
+                {"type": "text", "text": "👁️ 護眼", "color": COLORS['purple']},
+                {"type": "text", "text": f"✅{eye_completed} ❌{eye_ignored}", "color": COLORS['white'], "align": "end"}]}]}}
 
 def flex_week_report(summary, goals=None):
     """週報 Flex"""
@@ -1539,6 +1580,21 @@ def handle_message(event):
                 today = datetime.now(TZ).strftime('%Y-%m-%d')
                 write_setting('exercise_skip', today)
                 msgs.append(TextMessage(text="😴 好的，今天好好休息！\n記得明天要動起來喔", quick_reply=qr(QR_MAIN)))
+            
+            # ===== 護眼記錄 =====
+            elif text == '護眼完成' or text == '已護眼':
+                write_eye('completed')
+                eye_stats = get_eye_stats()
+                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 20-20-20 護眼習慣！", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '護眼忽略':
+                write_eye('ignored')
+                eye_stats = get_eye_stats()
+                msgs.append(TextMessage(text=f"👁️ 已記錄忽略\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n記得要讓眼睛休息喔！", quick_reply=qr(QR_MAIN)))
+            
+            elif text == '護眼統計':
+                eye_stats = get_eye_stats()
+                msgs.append(TextMessage(text=f"👁️ 今日護眼統計\n\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n📊 總提醒：{eye_stats['total']} 次\n\n20-20-20 法則：\n每 20 分鐘看向 20 英尺（6公尺）遠處 20 秒", quick_reply=qr(QR_MAIN)))
             
             # ===== 目標設定 =====
             elif text.startswith('喝水目標'):
