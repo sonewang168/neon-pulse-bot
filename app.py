@@ -986,6 +986,7 @@ QR_MOD = [{'label': '💧 改喝水', 'text': '修改喝水'}, {'label': '🧍 �
 QR_MOD_EX = [{'label': '🗑️ 刪除最後', 'text': '刪除運動'}, {'label': '🧹 清空全部', 'text': '清空運動'}, {'label': '↩️ 返回', 'text': '修改'}]
 QR_STATS = [{'label': '📊 今日', 'text': '今日統計'}, {'label': '📅 本週', 'text': '週報'}, {'label': '⚖️ 體重', 'text': '體重紀錄'}, {'label': '🔥 連續達標', 'text': '連續達標'}]
 QR_WEIGHT = [{'label': '⚖️ 記錄體重', 'text': '記錄體重'}, {'label': '📊 體重紀錄', 'text': '體重紀錄'}, {'label': '↩️ 返回', 'text': '選單'}]
+QR_EYE = [{'label': '👁️ 已護眼', 'text': '護眼完成'}, {'label': '📊 護眼統計', 'text': '護眼統計'}, {'label': '📊 今日統計', 'text': '今日統計'}]
 
 # ===== Flex Message =====
 def flex_water(c):
@@ -1585,16 +1586,16 @@ def handle_message(event):
             elif text == '護眼完成' or text == '已護眼':
                 write_eye('completed')
                 eye_stats = get_eye_stats()
-                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 20-20-20 護眼習慣！", quick_reply=qr(QR_MAIN)))
+                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 20-20-20 護眼習慣！", quick_reply=qr(QR_EYE)))
             
             elif text == '護眼忽略':
                 write_eye('ignored')
                 eye_stats = get_eye_stats()
-                msgs.append(TextMessage(text=f"👁️ 已記錄忽略\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n記得要讓眼睛休息喔！", quick_reply=qr(QR_MAIN)))
+                msgs.append(TextMessage(text=f"👁️ 已記錄忽略\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n記得要讓眼睛休息喔！", quick_reply=qr(QR_EYE)))
             
             elif text == '護眼統計':
                 eye_stats = get_eye_stats()
-                msgs.append(TextMessage(text=f"👁️ 今日護眼統計\n\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n📊 總提醒：{eye_stats['total']} 次\n\n20-20-20 法則：\n每 20 分鐘看向 20 英尺（6公尺）遠處 20 秒", quick_reply=qr(QR_MAIN)))
+                msgs.append(TextMessage(text=f"👁️ 今日護眼統計\n\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n📊 總提醒：{eye_stats['total']} 次\n\n20-20-20 法則：\n每 20 分鐘看向 20 英尺（6公尺）遠處 20 秒", quick_reply=qr(QR_EYE)))
             
             # ===== 目標設定 =====
             elif text.startswith('喝水目標'):
