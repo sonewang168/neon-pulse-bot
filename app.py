@@ -941,16 +941,35 @@ def flex_ai(gemini, openai):
     return {"type": "carousel", "contents": bubbles} if bubbles else None
 
 def send_ai_analysis_async(user_id, action, count, extra=""):
-    """背景執行 AI 分析並推送"""
-    print(f"[AI] Starting async analysis: action={action}, user={user_id[:10]}...")
+    """背景執行 AI 分析並推送（含防重複）"""
+    
+    # 防重複：使用全域變數記錄上次呼叫時間
+    global _last_ai_call
+    if not hasattr(send_ai_analysis_async, '_last_call'):
+        send_ai_analysis_async._last_call = {}
+    
+    now = datetime.now(TZ)
+    last_call = send_ai_analysis_async._last_call.get(action)
+    
+    # 同類型 AI 分析間隔至少 60 秒
+    if last_call and (now - last_call).total_seconds() < 60:
+        print(f"[AI] 跳過 {action} 分析，距上次僅 {(now - last_call).total_seconds():.1f} 秒")
+        return
+    
+    send_ai_analysis_async._last_call[action] = now
+    print(f"[AI] Starting async analysis: action={action}, count={count}, user={user_id[:10]}...")
     
     def task():
         try:
-            print(f"[AI] Calling Gemini...")
+            # 等待 2 秒確保資料已寫入
+            import time
+            time.sleep(2)
+            
+            print(f"[AI] Calling Gemini with count={count}...")
             gemini = get_gemini(action, count, extra)
             print(f"[AI] Gemini result: {gemini[:50] if gemini else 'None'}...")
             
-            print(f"[AI] Calling OpenAI...")
+            print(f"[AI] Calling OpenAI with count={count}...")
             openai = get_openai(action, count, extra)
             print(f"[AI] OpenAI result: {openai[:50] if openai else 'None'}...")
             
@@ -1586,7 +1605,7 @@ def handle_message(event):
             elif text == '護眼完成' or text == '已護眼':
                 write_eye('completed')
                 eye_stats = get_eye_stats()
-                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 30-20-20 護眼習慣！", quick_reply=qr(QR_EYE)))
+                msgs.append(TextMessage(text=f"👁️ 護眼完成！做得好！\n\n今日統計：\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n\n繼續保持 20-20-20 護眼習慣！", quick_reply=qr(QR_EYE)))
             
             elif text == '護眼忽略':
                 write_eye('ignored')
