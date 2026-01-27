@@ -941,53 +941,51 @@ def flex_ai(gemini, openai):
     return {"type": "carousel", "contents": bubbles} if bubbles else None
 
 def send_ai_analysis_async(user_id, action, count, extra=""):
-    """背景執行 AI 分析並推送（含防重複）"""
+    """背景執行 AI 分析並推送（只在達標時觸發）"""
     
-    # 防重複：使用全域變數記錄上次呼叫時間
-    global _last_ai_call
-    if not hasattr(send_ai_analysis_async, '_last_call'):
-        send_ai_analysis_async._last_call = {}
+    # 取得目標
+    goals = get_goals()
     
-    now = datetime.now(TZ)
-    last_call = send_ai_analysis_async._last_call.get(action)
-    
-    # 同類型 AI 分析間隔至少 60 秒
-    if last_call and (now - last_call).total_seconds() < 60:
-        print(f"[AI] 跳過 {action} 分析，距上次僅 {(now - last_call).total_seconds():.1f} 秒")
+    # 只在達標時才觸發 AI 分析
+    if action == 'water' and count < goals['water']:
+        print(f"[AI] 跳過 water 分析，尚未達標 ({count}/{goals['water']})")
+        return
+    if action == 'stand' and count < goals['stand']:
+        print(f"[AI] 跳過 stand 分析，尚未達標 ({count}/{goals['stand']})")
         return
     
-    send_ai_analysis_async._last_call[action] = now
-    print(f"[AI] Starting async analysis: action={action}, count={count}, user={user_id[:10]}...")
+    # 防重複：每天每類型只分析一次
+    today = get_today()
+    cache_key = f"ai_{action}_{today}"
+    
+    if not hasattr(send_ai_analysis_async, '_daily_cache'):
+        send_ai_analysis_async._daily_cache = set()
+    
+    if cache_key in send_ai_analysis_async._daily_cache:
+        print(f"[AI] 跳過 {action} 分析，今日已分析過")
+        return
+    
+    send_ai_analysis_async._daily_cache.add(cache_key)
+    print(f"[AI] 🎉 達標！Starting analysis: action={action}, count={count}")
     
     def task():
         try:
-            # 等待 2 秒確保資料已寫入
             import time
             time.sleep(2)
             
-            print(f"[AI] Calling Gemini with count={count}...")
             gemini = get_gemini(action, count, extra)
-            print(f"[AI] Gemini result: {gemini[:50] if gemini else 'None'}...")
-            
-            print(f"[AI] Calling OpenAI with count={count}...")
             openai = get_openai(action, count, extra)
-            print(f"[AI] OpenAI result: {openai[:50] if openai else 'None'}...")
             
             af = flex_ai(gemini, openai)
             if af and user_id:
-                print(f"[AI] Sending push message...")
                 with ApiClient(configuration) as api:
                     MessagingApi(api).push_message(PushMessageRequest(
                         to=user_id,
-                        messages=[FlexMessage(alt_text='🤖 AI 分析', contents=FlexContainer.from_dict(af))]
+                        messages=[FlexMessage(alt_text='🤖 AI 達標分析', contents=FlexContainer.from_dict(af))]
                     ))
-                print(f"[AI] Push message sent successfully!")
-            else:
-                print(f"[AI] No AI result or no user_id. af={af is not None}, user_id={user_id is not None}")
+                print(f"[AI] ✅ 達標分析已發送!")
         except Exception as e:
             print(f"[AI] Error: {e}")
-            import traceback
-            traceback.print_exc()
     
     thread = threading.Thread(target=task)
     thread.start()
@@ -1615,6 +1613,30 @@ def handle_message(event):
             elif text == '護眼統計':
                 eye_stats = get_eye_stats()
                 msgs.append(TextMessage(text=f"👁️ 今日護眼統計\n\n✅ 已護眼：{eye_stats['completed']} 次\n❌ 忽略：{eye_stats['ignored']} 次\n📊 總提醒：{eye_stats['total']} 次\n\n20-20-20 法則：\n每 20 分鐘看向 20 英尺（6公尺）遠處 20 秒", quick_reply=qr(QR_EYE)))
+            
+            # ===== 手動 AI 分析 =====
+            elif text == 'AI分析' or text == 'ai分析':
+                stats = read_today_stats()
+                summary = f"喝水{stats['water_count']}杯、起身{stats['stand_count']}次、運動{stats['exercise_minutes']}分鐘"
+                msgs.append(TextMessage(text="🤖 正在分析今日數據...\n請稍候，AI 分析結果將在幾秒後推送", quick_reply=qr(QR_MAIN)))
+                # 強制觸發 AI 分析
+                def force_ai():
+                    try:
+                        import time
+                        time.sleep(1)
+                        gemini = get_gemini('daily', 0, summary)
+                        openai = get_openai('daily', 0, summary)
+                        af = flex_ai(gemini, openai)
+                        if af:
+                            with ApiClient(configuration) as api:
+                                MessagingApi(api).push_message(PushMessageRequest(
+                                    to=user_id,
+                                    messages=[FlexMessage(alt_text='🤖 AI 分析', contents=FlexContainer.from_dict(af))]
+                                ))
+                    except Exception as e:
+                        print(f"[AI] Force analysis error: {e}")
+                thread = threading.Thread(target=force_ai)
+                thread.start()
             
             # ===== 目標設定 =====
             elif text.startswith('喝水目標'):
