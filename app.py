@@ -941,37 +941,13 @@ def flex_ai(gemini, openai):
     return {"type": "carousel", "contents": bubbles} if bubbles else None
 
 def send_ai_analysis_async(user_id, action, count, extra=""):
-    """背景執行 AI 分析並推送（只在達標時觸發）"""
-    
-    # 取得目標
-    goals = get_goals()
-    
-    # 只在達標時才觸發 AI 分析
-    if action == 'water' and count < goals['water']:
-        print(f"[AI] 跳過 water 分析，尚未達標 ({count}/{goals['water']})")
-        return
-    if action == 'stand' and count < goals['stand']:
-        print(f"[AI] 跳過 stand 分析，尚未達標 ({count}/{goals['stand']})")
-        return
-    
-    # 防重複：每天每類型只分析一次
-    today = get_today()
-    cache_key = f"ai_{action}_{today}"
-    
-    if not hasattr(send_ai_analysis_async, '_daily_cache'):
-        send_ai_analysis_async._daily_cache = set()
-    
-    if cache_key in send_ai_analysis_async._daily_cache:
-        print(f"[AI] 跳過 {action} 分析，今日已分析過")
-        return
-    
-    send_ai_analysis_async._daily_cache.add(cache_key)
-    print(f"[AI] 🎉 達標！Starting analysis: action={action}, count={count}")
+    """背景執行 AI 分析並推送（僅手動觸發）"""
+    print(f"[AI] Starting analysis: action={action}, count={count}")
     
     def task():
         try:
             import time
-            time.sleep(2)
+            time.sleep(1)
             
             gemini = get_gemini(action, count, extra)
             openai = get_openai(action, count, extra)
@@ -981,9 +957,9 @@ def send_ai_analysis_async(user_id, action, count, extra=""):
                 with ApiClient(configuration) as api:
                     MessagingApi(api).push_message(PushMessageRequest(
                         to=user_id,
-                        messages=[FlexMessage(alt_text='🤖 AI 達標分析', contents=FlexContainer.from_dict(af))]
+                        messages=[FlexMessage(alt_text='🤖 AI 分析', contents=FlexContainer.from_dict(af))]
                     ))
-                print(f"[AI] ✅ 達標分析已發送!")
+                print(f"[AI] ✅ 分析已發送!")
         except Exception as e:
             print(f"[AI] Error: {e}")
     
@@ -1400,13 +1376,11 @@ def handle_message(event):
             if text == '已喝水':
                 c = write_water()
                 msgs.append(FlexMessage(alt_text=f'💧 第{c}杯', contents=FlexContainer.from_dict(flex_water(c)), quick_reply=qr(QR_WATER)))
-                send_ai_analysis_async(user_id, 'water', c)
             
             # ===== 已起身 =====
             elif text == '已起身':
                 c = write_stand()
                 msgs.append(FlexMessage(alt_text=f'🧍 第{c}次', contents=FlexContainer.from_dict(flex_stand(c)), quick_reply=qr(QR_STAND)))
-                send_ai_analysis_async(user_id, 'stand', c)
             
             # ===== 記錄運動 =====
             elif text == '記錄運動':
@@ -1446,7 +1420,6 @@ def handle_message(event):
                             write_weight(weight)
                             stats = get_weight_stats()
                             msgs.append(FlexMessage(alt_text=f'⚖️ {weight}kg', contents=FlexContainer.from_dict(flex_weight_logged(weight, stats)), quick_reply=qr(QR_WEIGHT)))
-                            send_ai_analysis_async(user_id, 'weight', 0, f"目前體重 {weight} kg")
                         else:
                             msgs.append(TextMessage(text="體重數值似乎不太對，請輸入合理範圍（20-300 kg）", quick_reply=qr(QR_MAIN)))
                     except ValueError:
@@ -1494,7 +1467,6 @@ def handle_message(event):
                     t = int(parts[-1])
                     set_count('water', t)
                     msgs.append(FlexMessage(alt_text=f'已改為{t}杯', contents=FlexContainer.from_dict(flex_water(t)), quick_reply=qr(QR_MAIN)))
-                    send_ai_analysis_async(user_id, 'water', t)
                 else:
                     cur = read_today_count('water')
                     msgs.append(FlexMessage(alt_text='修改喝水', contents=FlexContainer.from_dict(flex_modify_prompt('water', cur)), quick_reply=qr(QR_MAIN)))
@@ -1506,7 +1478,6 @@ def handle_message(event):
                     t = int(parts[-1])
                     set_count('stand', t)
                     msgs.append(FlexMessage(alt_text=f'已改為{t}次', contents=FlexContainer.from_dict(flex_stand(t)), quick_reply=qr(QR_MAIN)))
-                    send_ai_analysis_async(user_id, 'stand', t)
                 else:
                     cur = read_today_count('stand')
                     msgs.append(FlexMessage(alt_text='修改起身', contents=FlexContainer.from_dict(flex_modify_prompt('stand', cur)), quick_reply=qr(QR_MAIN)))
@@ -1522,7 +1493,6 @@ def handle_message(event):
                     et, dur = parts[0], int(parts[1])
                     cal = write_exercise(et, dur)
                     msgs.append(FlexMessage(alt_text=f'{et}{dur}分鐘', contents=FlexContainer.from_dict(flex_exercise(et, dur, cal)), quick_reply=qr(QR_EX)))
-                    send_ai_analysis_async(user_id, 'exercise', 0, f"{et} {dur}分鐘，{cal}卡")
                 else:
                     msgs.append(TextMessage(text=f"請輸入時間，例如：{parts[0]} 30", quick_reply=qr(QR_MAIN)))
             
